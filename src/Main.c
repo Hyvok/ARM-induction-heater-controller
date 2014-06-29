@@ -11,20 +11,22 @@
 // depends on timer clock speed
 #define PWM_PW_REG 0x8000
 
+// Helper macros
+// Set register bits specified by mask to value
+#define SET_REG_MASK(reg, mask, val)    (reg = (reg & ~mask)) | val)
+// Get bit from register specified by mask
+#define GET_REG_MASK(reg, mask)         (reg & mask)
+
 typedef enum
 {
-
     LOW = 0x00,
     HIGH = 0x01
-
 } PIN_STATE_t;
 
 typedef enum
 {
-
     DISABLE,
     ENABLE
-
 } EN_t;
 
 // Private function prototypes
@@ -34,71 +36,49 @@ void init();
 
 void setPinMode(GPIO_t* port, GPIO_PIN_t pin, GPIO_MODER_t mode)
 {
-
-    port->MODER |= ((GPIO_MODER_MODER0_bm << (pin * 2)) & (mode << (pin * 2)));
-
+    SET_REG_MASK(port->MODER, (GPIO_MODER_MODER0_bm << (pin * 2)), (mode << (pin * 2)));
+    //port->MODER |= ((GPIO_MODER_MODER0_bm << (pin * 2)) & (mode << (pin * 2)));
 }
-
 void setPinOutType(GPIO_t* port, GPIO_PIN_t pin, GPIO_OTYPER_t type)
 {
-
-    port->OTYPER |= ((GPIO_OTYPER_OT0_bm << pin) & (type << pin));
-
+    SET_REG_MASK(port->OTYPER, (GPIO_OTYPER_OT0_bm << pin), (type << pin));
+    //port->OTYPER |= ((GPIO_OTYPER_OT0_bm << pin) & (type << pin));
 }
-
 void setPinOutSpeed(GPIO_t* port, GPIO_PIN_t pin, GPIO_OSPEEDR_t speed)
 {
-
-    port->OSPEEDR |=    ((GPIO_OSPEEDR_OSPEEDR0_bm << (pin * 2)) & 
-                        (speed << (pin * 2)));
-
+    SET_REG_MASK(   port->OSPEEDR, (GPIO_OSPEEDR_OSPEEDR0_bm << (pin * 2)), 
+                    (speed << (pin * 2)));
+    //port->OSPEEDR |=    ((GPIO_OSPEEDR_OSPEEDR0_bm << (pin * 2)) & 
+      //                  (speed << (pin * 2)));
 }
-
 void setPinPull(GPIO_t* port, GPIO_PIN_t pin, GPIO_PUPDR_t pull)
 {
-
-    port->PUPDR |= ((GPIO_PUPDR_PUPDR0_bm << (pin * 2)) & (pull << (pin * 2)));
-
+    SET_REG_MASK(   port->PUPDR, (GPIO_PUPDR_PUPDR0_bm << (pin * 2)), 
+                    (pull << (pin * 2)));
+    //port->PUPDR |= ((GPIO_PUPDR_PUPDR0_bm << (pin * 2)) & (pull << (pin * 2)));
 }
-
 PIN_STATE_t getInPinState(GPIO_t* port, GPIO_PIN_t pin)
 {
-
     return (PIN_STATE_t)((port->IDR & (GPIO_IDR_IDR0_bm << pin)) >> pin);
-
 }
-
 PIN_STATE_t getOutPinState(GPIO_t* port, GPIO_PIN_t pin)
 {
-
     return (PIN_STATE_t)((port->ODR & (GPIO_ODR_ODR0_bm << pin)) >> pin);
-
 }
-
 void setPin(GPIO_t* port, GPIO_PIN_t pin)
 {
-
-    port->BSRR = (0x01<<pin);
-
+    port->BSRR = (0x01 << pin);
 }
-
 void resetPin(GPIO_t* port, GPIO_PIN_t pin)
 {
-
-    port->BSRR = ((0x01<<pin)<<16);
-
+    port->BSRR = ((0x01 << pin) << 16);
 }
-
 void setPort(GPIO_t* port, uint16_t val)
 {
-
     port->ODR = val;
-
 }
-
 void enableAhbPeriphClk(RCC_AHBENR_t periph, EN_t state)
 {
-
     if(state == ENABLE)
     {
         RCC->AHBENR |= periph;
@@ -107,12 +87,9 @@ void enableAhbPeriphClk(RCC_AHBENR_t periph, EN_t state)
     {
         RCC->AHBENR &= ~periph;
     }
-
 }
-
 void enableApb1PeriphClk(RCC_APB1ENR_t periph, EN_t state)
 {
-
     if(state == ENABLE)
     {
         RCC->APB1ENR |= periph;
@@ -121,12 +98,9 @@ void enableApb1PeriphClk(RCC_APB1ENR_t periph, EN_t state)
     {
         RCC->APB1ENR &= ~periph;
     }
-
 }
-
 void enableApb2PeriphClk(RCC_APB2ENR_t periph, EN_t state)
 {
-
     if(state == ENABLE)
     {
         RCC->APB2ENR |= periph;
@@ -135,12 +109,9 @@ void enableApb2PeriphClk(RCC_APB2ENR_t periph, EN_t state)
     {
         RCC->APB2ENR &= ~periph;
     }
-
 }
-
 static void SetSysClock()
 {
-
     uint32_t startUpCounter = 0, hsiStatus = 0;
 
     // Enable HSI
@@ -192,9 +163,7 @@ static void SetSysClock()
         /* If HSI fails to start-up, the application will have wrong clock 
          configuration. User can add here some code to deal with this error */
     }
-
 }
-
 void SystemInit()
 {
 
@@ -211,12 +180,9 @@ void SystemInit()
     #else
     SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH. */
     #endif  
-
 }
-
 int main(void) 
 {
-
     SystemInit();
     init();
 
@@ -225,11 +191,9 @@ int main(void)
     }
 
 	return 0;
-
 }
 
 void init() {
-
     // Clocks
     enableAhbPeriphClk(RCC_AHBENR_IOPAEN_gc, ENABLE);
     enableAhbPeriphClk(RCC_AHBENR_IOPBEN_gc, ENABLE);
@@ -263,12 +227,9 @@ void init() {
     // Initialize timers
     //initTimer(PWM_TIMER);
     //GPIO_SetBits(LED1_PORT, LED1);
-
 }
-
 /*void initTimer(TIM_TypeDef* timer)
 {
-
     // Set the frequency to the auto-preload register
     timer->ARR = (0xFFFF & PWM_FREQ_REG);
     // Set the pulse width to the capture/compare register
@@ -311,8 +272,6 @@ void init() {
 
     // Main output enable
     timer->BDTR = TIM_BDTR_MOE;
-
 }*/
-
 // Dummy function to avoid compiler error
 void _init() {}
