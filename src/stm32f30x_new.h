@@ -39,17 +39,17 @@ typedef struct
     register32_t OR;                            // Option registers, 0x60
 } AC_TIM_t;
 
-struct enum
+typedef enum 
 {
     AC_TIM_CR1_UIFREMAP_EN_gc       = (0x01<<11),
     AC_TIM_CR1_UIFREMAP_DIS_gc      = (0x00<<11),
     AC_TIM_CR1_CKD_NODIV_gc         = (0x00<<8),
     AC_TIM_CR1_CKD_DIVBY2_gc        = (0x01<<8),
     AC_TIM_CR1_CKD_DIVBY4_gc        = (0x02<<8),
-    AC_TIM_CR1_CKD_DIVBY2_gc        = (0x01<<8),
+    AC_TIM_CR1_CKD_DIVBY8_gc        = (0x01<<8),
     AC_TIM_CR1_ARPE_BUF_gc          = (0x01<<7),
     AC_TIM_CR1_ARPE_UNBUF_gc        = (0x01<<7),
-    AC_TIM_CR1_CMS_EDGE_gc          = (0x00<<5),_
+    AC_TIM_CR1_CMS_EDGE_gc          = (0x00<<5),
     AC_TIM_CR1_CMS_CENTER1_gc       = (0x01<<5),
     AC_TIM_CR1_CMS_CENTER2_gc       = (0x02<<5),
     AC_TIM_CR1_CMS_CENTER3_gc       = (0x03<<5),
@@ -75,7 +75,7 @@ struct enum
 #define AC_TIM_CR1_UDIS_bm          (0x01<<1)
 #define AC_TIM_CR1_CEN_bm           (0x01<<0)
 
-struct enum
+typedef enum 
 {
     AC_TIM_CR2_MMS2_RES_gc                  = (0x00<<20),
     AC_TIM_CR2_MMS2_EN_gc                   = (0x01<<20),
@@ -107,8 +107,10 @@ struct enum
     AC_TIM_CR2_OIS2N_1_gc                   = (0x01<<11),
     AC_TIM_CR2_OIS2_0_gc                    = (0x00<<10),
     AC_TIM_CR2_OIS2_1_gc                    = (0x01<<10),
-    AC_TIM_CR2_OIS1_0_gc                    = (0x00<<9),
-    AC_TIM_CR2_OIS1_1_gc                    = (0x01<<9),
+    AC_TIM_CR2_OIS1N_0_gc                   = (0x00<<9),
+    AC_TIM_CR2_OIS1N_1_gc                   = (0x01<<9),
+    AC_TIM_CR2_OIS1_0_gc                    = (0x00<<8),
+    AC_TIM_CR2_OIS1_1_gc                    = (0x01<<8),
     AC_TIM_CR2_TI1S_CH1_gc                  = (0x00<<7),
     AC_TIM_CR2_TI1S_XOR_gc                  = (0x01<<7),
     AC_TIM_CR2_MMS_RES_gc                   = (0x00<<4),
@@ -135,7 +137,8 @@ struct enum
 #define AC_TIM_CR2_OIS3_bm          (0x01<<12)
 #define AC_TIM_CR2_OIS2N_bm         (0x01<<11)
 #define AC_TIM_CR2_OIS2_bm          (0x01<<10)
-#define AC_TIM_CR2_OIS1_bm          (0x01<<9)
+#define AC_TIM_CR2_OIS1N_bm         (0x01<<9)
+#define AC_TIM_CR2_OIS1_bm          (0x01<<8)
 #define AC_TIM_CR2_TI1S_bm          (0x01<<7)
 #define AC_TIM_CR2_MMS_bm           (0x07<<4)
 #define AC_TIM_CR2_CCDS_bm          (0x01<<3)
@@ -150,9 +153,16 @@ struct enum
 #define AC_TIM_SMCR_MSM_bm          (0x01<<7)
 #define AC_TIM_SMCR_TS_bm           (0x07<<4)
 #define AC_TIM_SMCR_OCCS_bm         (0x01<<3)
-#define AC_TIM_SMCR_SMS_bm          (0x07<<0)
 
-struct enum
+typedef enum
+{
+    AC_TIM_EGR_UG_NOACT_gc          = (0x00<<0),
+    AC_TIM_EGR_UG_REINIT_gc         = (0x01<<0)
+} AC_TIM_EGR_t;
+
+#define AC_TIM_EGR_UG_bm            (0x01<<0)
+
+typedef enum 
 {
     AC_TIM_CCMR1_OC2M_FROZEN_gc         = (0x00<<12),
     AC_TIM_CCMR1_OC2M_CH1_ACT_gc        = (0x01<<12),
@@ -181,7 +191,7 @@ struct enum
     AC_TIM_CCMR1_OC1M_CPWMM2_gc         = ((0x01<<16)|((0x05<<4))),
     AC_TIM_CCMR1_OC1M_APWMM1_gc         = ((0x01<<16)|((0x06<<4))),
     AC_TIM_CCMR1_OC1M_APWMM2_gc         = ((0x01<<16)|((0x07<<4))),
-    AC_TIM_CCMR1_OC1M_APWMM2_gc         = ((0x01<<16)|((0x07<<4))),
+    AC_TIM_CCMR1_OC1M_APWMM3_gc         = ((0x01<<16)|((0x07<<4))),
     AC_TIM_CCMR1_IC2F_NONE_gc           = (0x00<<12),
     AC_TIM_CCMR1_IC2F_DIV1N2_gc         = (0x01<<12),
     AC_TIM_CCMR1_IC2F_DIV1N4_gc         = (0x02<<12),
@@ -259,7 +269,7 @@ struct enum
 #define AC_TIM_CCMR1_OC1FE_bm       (0x01<<2)
 #define AC_TIM_CCMR1_CC1S_bm        (0x03<<0)
 
-struct enum
+typedef enum 
 {
     AC_TIM_CCMR2_OC4M_FROZEN_gc         = (0x00<<12),
     AC_TIM_CCMR2_OC4M_CH1_ACT_gc        = (0x01<<12),
@@ -288,7 +298,7 @@ struct enum
     AC_TIM_CCMR2_OC3M_CPWMM2_gc         = ((0x01<<16)|((0x05<<4))),
     AC_TIM_CCMR2_OC3M_APWMM1_gc         = ((0x01<<16)|((0x06<<4))),
     AC_TIM_CCMR2_OC3M_APWMM2_gc         = ((0x01<<16)|((0x07<<4))),
-    AC_TIM_CCMR2_OC3M_APWMM2_gc         = ((0x01<<16)|((0x07<<4))),
+    AC_TIM_CCMR2_OC3M_APWMM3_gc         = ((0x01<<16)|((0x07<<4))),
     AC_TIM_CCMR2_IC4F_NONE_gc           = (0x00<<12),
     AC_TIM_CCMR2_IC4F_DIV1N2_gc         = (0x01<<12),
     AC_TIM_CCMR2_IC4F_DIV1N4_gc         = (0x02<<12),
@@ -366,7 +376,7 @@ struct enum
 #define AC_TIM_CCMR2_OC3FE_bm       (0x01<<2)
 #define AC_TIM_CCMR2_CC3S_bm        (0x03<<0)
 
-struct enum
+typedef enum 
 {
     AC_TIM_CCER_CC1E_DIS_gc         = (0x00<<0),
     AC_TIM_CCER_CC1E_EN_gc          = (0x01<<0),
@@ -461,7 +471,7 @@ struct enum
 
 #define AC_TIM_CCR4_CCR4_bm         (0xFFFF<<0)
 
-struct enum
+typedef enum 
 {
     AC_TIM_CCR5_GC5C3_NONE_gc       = (0x00<<31),
     AC_TIM_CCR5_GC5C3_AND_gc        = (0x01<<31),
@@ -477,7 +487,8 @@ struct enum
 #define AC_TIM_CCR5_GC5C1_bm        (0x01<<29)
 
 #define AC_TIM_CCR6_CCR6_bm         (0xFFFF<<0)
-struct enum
+
+typedef enum 
 {
     AC_TIM_BDTR_BK2P_ACTLO_gc       = (0x00<<25),
     AC_TIM_BDTR_BK2P_ACTHI_gc       = (0x01<<25),
@@ -546,7 +557,7 @@ struct enum
 #define AC_TIM_BDTR_LOCK_bm         (0x03<<8)
 #define AC_TIM_BDTR_DTG_bm          (0xFF<<0)
 
-struct enum
+typedef enum 
 {
     AC_TIM_CCMR3_OC6M_FROZEN_gc         = (0x00<<12),
     AC_TIM_CCMR3_OC6M_CH1_ACT_gc        = (0x01<<12),
@@ -575,7 +586,7 @@ struct enum
     AC_TIM_CCMR3_OC5M_CPWMM2_gc         = ((0x01<<16)|((0x05<<4))),
     AC_TIM_CCMR3_OC5M_APWMM1_gc         = ((0x01<<16)|((0x06<<4))),
     AC_TIM_CCMR3_OC5M_APWMM2_gc         = ((0x01<<16)|((0x07<<4))),
-    AC_TIM_CCMR3_OC5M_APWMM2_gc         = ((0x01<<16)|((0x07<<4))),
+    AC_TIM_CCMR3_OC5M_APWMM3_gc         = ((0x01<<16)|((0x07<<4))),
     AC_TIM_CCMR3_OC6CE_DIS_gc           = (0x00<<15),
     AC_TIM_CCMR3_OC6CE_EN_gc            = (0x01<<15),
     AC_TIM_CCMR3_OC6PE_DIS_gc           = (0x00<<11),
@@ -691,6 +702,148 @@ typedef struct
 #define GPIO_BSRR_BS13_bm           (0x01<<13)
 #define GPIO_BSRR_BS14_bm           (0x01<<14)
 #define GPIO_BSRR_BS15_bm           (0x01<<15)
+
+typedef enum
+{
+    GPIO_MODER_OUT_gc               = 0x01,
+    GPIO_MODER_IN_gc                = 0x00,
+    GPIO_MODER_AF_gc                = 0x02,
+    GPIO_MODER_ANA_gc               = 0x03
+} GPIO_MODER_t;
+
+// MODER
+#define GPIO_MODER_MODER0_bm        (0x03<<0)
+#define GPIO_MODER_MODER1_bm        (0x03<<2)
+#define GPIO_MODER_MODER2_bm        (0x03<<4)
+#define GPIO_MODER_MODER3_bm        (0x03<<6)
+#define GPIO_MODER_MODER4_bm        (0x03<<8)
+#define GPIO_MODER_MODER5_bm        (0x03<<10)
+#define GPIO_MODER_MODER6_bm        (0x03<<12)
+#define GPIO_MODER_MODER7_bm        (0x03<<14)
+#define GPIO_MODER_MODER8_bm        (0x03<<16)
+#define GPIO_MODER_MODER9_bm        (0x03<<18)
+#define GPIO_MODER_MODER10_bm       (0x03<<20)
+#define GPIO_MODER_MODER11_bm       (0x03<<22)
+#define GPIO_MODER_MODER12_bm       (0x03<<24)
+#define GPIO_MODER_MODER13_bm       (0x03<<26)
+#define GPIO_MODER_MODER14_bm       (0x03<<28)
+#define GPIO_MODER_MODER15_bm       (0x03<<30)
+
+typedef enum
+{
+   GPIO_OTYPER_PP_gc                = 0x00,
+   GPIO_OTYPER_OD_gc                = 0x01
+} GPIO_OTYPER_t;
+
+// OTYPER
+#define GPIO_OTYPER_OT0_bm          (0x01<<0)
+#define GPIO_OTYPER_OT1_bm          (0x01<<1)
+#define GPIO_OTYPER_OT2_bm          (0x01<<2)
+#define GPIO_OTYPER_OT3_bm          (0x01<<3)
+#define GPIO_OTYPER_OT4_bm          (0x01<<4)
+#define GPIO_OTYPER_OT5_bm          (0x01<<5)
+#define GPIO_OTYPER_OT6_bm          (0x01<<6)
+#define GPIO_OTYPER_OT7_bm          (0x01<<7)
+#define GPIO_OTYPER_OT8_bm          (0x01<<8)
+#define GPIO_OTYPER_OT9_bm          (0x01<<9)
+#define GPIO_OTYPER_OT10_bm         (0x01<<10)
+#define GPIO_OTYPER_OT11_bm         (0x01<<11)
+#define GPIO_OTYPER_OT12_bm         (0x01<<12)
+#define GPIO_OTYPER_OT13_bm         (0x01<<13)
+#define GPIO_OTYPER_OT14_bm         (0x01<<14)
+#define GPIO_OTYPER_OT15_bm         (0x01<<15)
+
+typedef enum
+{
+    GPIO_OSPEEDR_LOW_gc             = 0x00,
+    GPIO_OSPEEDR_MED_gc             = 0x01,
+    GPIO_OSPEEDR_HI_gc              = 0x03
+} GPIO_OSPEEDR_t;
+
+// OSPEEDR
+#define GPIO_OSPEEDR_OSPEEDR0_bm    (0x03<<0)
+#define GPIO_OSPEEDR_OSPEEDR1_bm    (0x03<<2)
+#define GPIO_OSPEEDR_OSPEEDR2_bm    (0x03<<4)
+#define GPIO_OSPEEDR_OSPEEDR3_bm    (0x03<<6)
+#define GPIO_OSPEEDR_OSPEEDR4_bm    (0x03<<8)
+#define GPIO_OSPEEDR_OSPEEDR5_bm    (0x03<<10)
+#define GPIO_OSPEEDR_OSPEEDR6_bm    (0x03<<12)
+#define GPIO_OSPEEDR_OSPEEDR7_bm    (0x03<<14)
+#define GPIO_OSPEEDR_OSPEEDR8_bm    (0x03<<16)
+#define GPIO_OSPEEDR_OSPEEDR9_bm    (0x03<<18)
+#define GPIO_OSPEEDR_OSPEEDR10_bm   (0x03<<20)
+#define GPIO_OSPEEDR_OSPEEDR11_bm   (0x03<<22)
+#define GPIO_OSPEEDR_OSPEEDR12_bm   (0x03<<24)
+#define GPIO_OSPEEDR_OSPEEDR13_bm   (0x03<<26)
+#define GPIO_OSPEEDR_OSPEEDR14_bm   (0x03<<28)
+#define GPIO_OSPEEDR_OSPEEDR15_bm   (0x03<<30)
+
+typedef enum
+{
+    GPIO_PUPDR_NONE_gc              = 0x00,
+    GPIO_PUPDR_PULLUP_gc            = 0x01,
+    GPIO_PUPDR_PULLDOWN_gc          = 0x02
+} GPIO_PUPDR_t;
+
+// PUPDR
+#define GPIO_PUPDR_PUPDR0_bm        (0x03<<0)
+#define GPIO_PUPDR_PUPDR1_bm        (0x03<<2)
+#define GPIO_PUPDR_PUPDR2_bm        (0x03<<4)
+#define GPIO_PUPDR_PUPDR3_bm        (0x03<<6)
+#define GPIO_PUPDR_PUPDR4_bm        (0x03<<8)
+#define GPIO_PUPDR_PUPDR5_bm        (0x03<<10)
+#define GPIO_PUPDR_PUPDR6_bm        (0x03<<12)
+#define GPIO_PUPDR_PUPDR7_bm        (0x03<<14)
+#define GPIO_PUPDR_PUPDR8_bm        (0x03<<16)
+#define GPIO_PUPDR_PUPDR9_bm        (0x03<<18)
+#define GPIO_PUPDR_PUPDR10_bm       (0x03<<20)
+#define GPIO_PUPDR_PUPDR11_bm       (0x03<<22)
+#define GPIO_PUPDR_PUPDR12_bm       (0x03<<24)
+#define GPIO_PUPDR_PUPDR13_bm       (0x03<<26)
+#define GPIO_PUPDR_PUPDR14_bm       (0x03<<28)
+#define GPIO_PUPDR_PUPDR15_bm       (0x03<<30)
+
+typedef enum
+{
+    GPIO_AFR_AF0_gc                 = (0x00),
+    GPIO_AFR_AF1_gc                 = (0x01),
+    GPIO_AFR_AF2_gc                 = (0x02),
+    GPIO_AFR_AF3_gc                 = (0x03),
+    GPIO_AFR_AF4_gc                 = (0x04),
+    GPIO_AFR_AF5_gc                 = (0x05),
+    GPIO_AFR_AF6_gc                 = (0x06),
+    GPIO_AFR_AF7_gc                 = (0x07),
+    GPIO_AFR_AF8_gc                 = (0x08),
+    GPIO_AFR_AF9_gc                 = (0x09),
+    GPIO_AFR_AF10_gc                = (0x0A),
+    GPIO_AFR_AF11_gc                = (0x0B),
+    GPIO_AFR_AF12_gc                = (0x0C),
+    GPIO_AFR_AF13_gc                = (0x0D),
+    GPIO_AFR_AF14_gc                = (0x0E),
+    GPIO_AFR_AF15_gc                = (0x0F),
+} GPIO_AFR_t;
+
+#define GPIO_AFR_AFR_bm             (0x0F)
+
+typedef enum
+{
+    GPIO_PIN_0                      = 0x00,
+    GPIO_PIN_1                      = 0x01,
+    GPIO_PIN_2                      = 0x02,
+    GPIO_PIN_3                      = 0x03,
+    GPIO_PIN_4                      = 0x04,
+    GPIO_PIN_5                      = 0x05,
+    GPIO_PIN_6                      = 0x06,
+    GPIO_PIN_7                      = 0x07,
+    GPIO_PIN_8                      = 0x08,
+    GPIO_PIN_9                      = 0x09,
+    GPIO_PIN_10                     = 0x0A,
+    GPIO_PIN_11                     = 0x0B,
+    GPIO_PIN_12                     = 0x0C,
+    GPIO_PIN_13                     = 0x0D,
+    GPIO_PIN_14                     = 0x0E,
+    GPIO_PIN_15                     = 0x0F
+} GPIO_PIN_t;  
 
 typedef struct 
 {
@@ -935,126 +1088,6 @@ typedef struct
     register32_t RESERVED0[5];
     register32_t CPACR;                   // Offset: 0x088 (R/W)  Coprocessor Access Control Register                   
 } SCB_t;
-
-typedef enum
-{
-    GPIO_MODER_OUT_gc               = 0x01,
-    GPIO_MODER_IN_gc                = 0x00,
-    GPIO_MODER_AF_gc                = 0x02,
-    GPIO_MODER_ANA_gc               = 0x03
-} GPIO_MODER_t;
-
-// MODER
-#define GPIO_MODER_MODER0_bm        (0x03<<0)
-#define GPIO_MODER_MODER1_bm        (0x03<<2)
-#define GPIO_MODER_MODER2_bm        (0x03<<4)
-#define GPIO_MODER_MODER3_bm        (0x03<<6)
-#define GPIO_MODER_MODER4_bm        (0x03<<8)
-#define GPIO_MODER_MODER5_bm        (0x03<<10)
-#define GPIO_MODER_MODER6_bm        (0x03<<12)
-#define GPIO_MODER_MODER7_bm        (0x03<<14)
-#define GPIO_MODER_MODER8_bm        (0x03<<16)
-#define GPIO_MODER_MODER9_bm        (0x03<<18)
-#define GPIO_MODER_MODER10_bm       (0x03<<20)
-#define GPIO_MODER_MODER11_bm       (0x03<<22)
-#define GPIO_MODER_MODER12_bm       (0x03<<24)
-#define GPIO_MODER_MODER13_bm       (0x03<<26)
-#define GPIO_MODER_MODER14_bm       (0x03<<28)
-#define GPIO_MODER_MODER15_bm       (0x03<<30)
-
-typedef enum
-{
-   GPIO_OTYPER_PP_gc                = 0x00,
-   GPIO_OTYPER_OD_gc                = 0x01
-} GPIO_OTYPER_t;
-
-// OTYPER
-#define GPIO_OTYPER_OT0_bm          (0x01<<0)
-#define GPIO_OTYPER_OT1_bm          (0x01<<1)
-#define GPIO_OTYPER_OT2_bm          (0x01<<2)
-#define GPIO_OTYPER_OT3_bm          (0x01<<3)
-#define GPIO_OTYPER_OT4_bm          (0x01<<4)
-#define GPIO_OTYPER_OT5_bm          (0x01<<5)
-#define GPIO_OTYPER_OT6_bm          (0x01<<6)
-#define GPIO_OTYPER_OT7_bm          (0x01<<7)
-#define GPIO_OTYPER_OT8_bm          (0x01<<8)
-#define GPIO_OTYPER_OT9_bm          (0x01<<9)
-#define GPIO_OTYPER_OT10_bm         (0x01<<10)
-#define GPIO_OTYPER_OT11_bm         (0x01<<11)
-#define GPIO_OTYPER_OT12_bm         (0x01<<12)
-#define GPIO_OTYPER_OT13_bm         (0x01<<13)
-#define GPIO_OTYPER_OT14_bm         (0x01<<14)
-#define GPIO_OTYPER_OT15_bm         (0x01<<15)
-
-typedef enum
-{
-    GPIO_OSPEEDR_LOW_gc             = 0x00,
-    GPIO_OSPEEDR_MED_gc             = 0x01,
-    GPIO_OSPEEDR_HI_gc              = 0x03
-} GPIO_OSPEEDR_t;
-
-// OSPEEDR
-#define GPIO_OSPEEDR_OSPEEDR0_bm    (0x03<<0)
-#define GPIO_OSPEEDR_OSPEEDR1_bm    (0x03<<2)
-#define GPIO_OSPEEDR_OSPEEDR2_bm    (0x03<<4)
-#define GPIO_OSPEEDR_OSPEEDR3_bm    (0x03<<6)
-#define GPIO_OSPEEDR_OSPEEDR4_bm    (0x03<<8)
-#define GPIO_OSPEEDR_OSPEEDR5_bm    (0x03<<10)
-#define GPIO_OSPEEDR_OSPEEDR6_bm    (0x03<<12)
-#define GPIO_OSPEEDR_OSPEEDR7_bm    (0x03<<14)
-#define GPIO_OSPEEDR_OSPEEDR8_bm    (0x03<<16)
-#define GPIO_OSPEEDR_OSPEEDR9_bm    (0x03<<18)
-#define GPIO_OSPEEDR_OSPEEDR10_bm   (0x03<<20)
-#define GPIO_OSPEEDR_OSPEEDR11_bm   (0x03<<22)
-#define GPIO_OSPEEDR_OSPEEDR12_bm   (0x03<<24)
-#define GPIO_OSPEEDR_OSPEEDR13_bm   (0x03<<26)
-#define GPIO_OSPEEDR_OSPEEDR14_bm   (0x03<<28)
-#define GPIO_OSPEEDR_OSPEEDR15_bm   (0x03<<30)
-
-typedef enum
-{
-    GPIO_PUPDR_NONE_gc              = 0x00,
-    GPIO_PUPDR_PULLUP_gc            = 0x01,
-    GPIO_PUPDR_PULLDOWN_gc          = 0x02
-} GPIO_PUPDR_t;
-
-// PUPDR
-#define GPIO_PUPDR_PUPDR0_bm        (0x03<<0)
-#define GPIO_PUPDR_PUPDR1_bm        (0x03<<2)
-#define GPIO_PUPDR_PUPDR2_bm        (0x03<<4)
-#define GPIO_PUPDR_PUPDR3_bm        (0x03<<6)
-#define GPIO_PUPDR_PUPDR4_bm        (0x03<<8)
-#define GPIO_PUPDR_PUPDR5_bm        (0x03<<10)
-#define GPIO_PUPDR_PUPDR6_bm        (0x03<<12)
-#define GPIO_PUPDR_PUPDR7_bm        (0x03<<14)
-#define GPIO_PUPDR_PUPDR8_bm        (0x03<<16)
-#define GPIO_PUPDR_PUPDR9_bm        (0x03<<18)
-#define GPIO_PUPDR_PUPDR10_bm       (0x03<<20)
-#define GPIO_PUPDR_PUPDR11_bm       (0x03<<22)
-#define GPIO_PUPDR_PUPDR12_bm       (0x03<<24)
-#define GPIO_PUPDR_PUPDR13_bm       (0x03<<26)
-#define GPIO_PUPDR_PUPDR14_bm       (0x03<<28)
-#define GPIO_PUPDR_PUPDR15_bm       (0x03<<30)
-
-typedef enum
-{
-    GPIO_PIN_0                      = 0x00,
-    GPIO_PIN_1                      = 0x01,
-    GPIO_PIN_2                      = 0x02,
-    GPIO_PIN_3                      = 0x03,
-    GPIO_PIN_4                      = 0x04,
-    GPIO_PIN_5                      = 0x05,
-    GPIO_PIN_6                      = 0x06,
-    GPIO_PIN_7                      = 0x07,
-    GPIO_PIN_8                      = 0x08,
-    GPIO_PIN_9                      = 0x09,
-    GPIO_PIN_10                     = 0x0A,
-    GPIO_PIN_11                     = 0x0B,
-    GPIO_PIN_12                     = 0x0C,
-    GPIO_PIN_13                     = 0x0D,
-    GPIO_PIN_14                     = 0x0E,
-    GPIO_PIN_15                     = 0x0F
-} GPIO_PIN_t;  
 
 // Base memory addresses
 #define FLASH_BASE                  (0x08000000) // FLASH base address in the alias region 

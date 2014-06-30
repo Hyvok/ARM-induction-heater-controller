@@ -13,9 +13,7 @@
 
 // Helper macros
 // Set register bits specified by mask to value
-#define SET_REG_MASK(reg, mask, val)    (reg = (reg & ~mask)) | val)
-// Get bit from register specified by mask
-#define GET_REG_MASK(reg, mask)         (reg & mask)
+#define SET_REG_MASK(reg, mask, val)    (reg = ((reg & ~mask)) | val)
 
 typedef enum
 {
@@ -32,30 +30,39 @@ typedef enum
 // Private function prototypes
 void Delay(void);
 void init();
-//void initTimer(TIM_TypeDef* timer);
+void initTimer(AC_TIM_t* tim);
 
 void setPinMode(GPIO_t* port, GPIO_PIN_t pin, GPIO_MODER_t mode)
 {
-    SET_REG_MASK(port->MODER, (GPIO_MODER_MODER0_bm << (pin * 2)), (mode << (pin * 2)));
-    //port->MODER |= ((GPIO_MODER_MODER0_bm << (pin * 2)) & (mode << (pin * 2)));
+    SET_REG_MASK(   port->MODER, (GPIO_MODER_MODER0_bm << (pin * 2)), 
+                    (mode << (pin * 2)));
 }
 void setPinOutType(GPIO_t* port, GPIO_PIN_t pin, GPIO_OTYPER_t type)
 {
     SET_REG_MASK(port->OTYPER, (GPIO_OTYPER_OT0_bm << pin), (type << pin));
-    //port->OTYPER |= ((GPIO_OTYPER_OT0_bm << pin) & (type << pin));
 }
 void setPinOutSpeed(GPIO_t* port, GPIO_PIN_t pin, GPIO_OSPEEDR_t speed)
 {
     SET_REG_MASK(   port->OSPEEDR, (GPIO_OSPEEDR_OSPEEDR0_bm << (pin * 2)), 
                     (speed << (pin * 2)));
-    //port->OSPEEDR |=    ((GPIO_OSPEEDR_OSPEEDR0_bm << (pin * 2)) & 
-      //                  (speed << (pin * 2)));
 }
 void setPinPull(GPIO_t* port, GPIO_PIN_t pin, GPIO_PUPDR_t pull)
 {
     SET_REG_MASK(   port->PUPDR, (GPIO_PUPDR_PUPDR0_bm << (pin * 2)), 
                     (pull << (pin * 2)));
-    //port->PUPDR |= ((GPIO_PUPDR_PUPDR0_bm << (pin * 2)) & (pull << (pin * 2)));
+}
+void setAltFunct(GPIO_t* port, GPIO_PIN_t pin, GPIO_AFR_t af)
+{
+    if(pin <= 7)
+    {
+        SET_REG_MASK(   port->AFRL, (GPIO_AFR_AFR_bm << (pin * 4)), 
+                        (af << (pin * 4)));
+    }
+    else
+    {
+        SET_REG_MASK(   port->AFRH, (GPIO_AFR_AFR_bm << (pin * 4)), 
+                        (af << ((pin - 8) * 4)));
+    }
 }
 PIN_STATE_t getInPinState(GPIO_t* port, GPIO_PIN_t pin)
 {
@@ -199,79 +206,54 @@ void init() {
     enableAhbPeriphClk(RCC_AHBENR_IOPBEN_gc, ENABLE);
     enableApb2PeriphClk(RCC_APB2ENR_TIM1EN_gc, ENABLE);
 
-    // Port A
-    setPinMode(&GPIOA, LED1, GPIO_MODER_OUT_gc);
-    setPinMode(&GPIOA, LED2, GPIO_MODER_OUT_gc);
-    setPinMode(&GPIOA, LED3, GPIO_MODER_OUT_gc);
+    // LEDs
+    setPinMode(&LED1_PORT, LED1, GPIO_MODER_OUT_gc);
+    setPinMode(&LED2_PORT, LED2, GPIO_MODER_OUT_gc);
+    setPinMode(&LED3_PORT, LED3, GPIO_MODER_OUT_gc);
+
+    // PWM
+    setPinMode(&DRVR_OE_PORT, DRVR_OE, GPIO_MODER_OUT_gc);
+    setPin(&DRVR_OE_PORT, DRVR_OE);
+
+    setAltFunct(&PWM_CH1_PORT, PWM_CH1, GPIO_AFR_AF6_gc);
+    setAltFunct(&PWM_CH2_PORT, PWM_CH2, GPIO_AFR_AF6_gc);
+    setAltFunct(&PWM_CH1N_PORT, PWM_CH1N, GPIO_AFR_AF6_gc);
+    setAltFunct(&PWM_CH2N_PORT, PWM_CH2N, GPIO_AFR_AF6_gc);
+
+    setPinMode(&PWM_CH1_PORT, PWM_CH1, GPIO_MODER_AF_gc);
+    setPinMode(&PWM_CH2_PORT, PWM_CH2, GPIO_MODER_AF_gc);
+    setPinMode(&PWM_CH1N_PORT, PWM_CH1N, GPIO_MODER_AF_gc);
+    setPinMode(&PWM_CH2N_PORT, PWM_CH2N, GPIO_MODER_AF_gc);
     
-    setPinOutType(&GPIOA, LED1, GPIO_OTYPER_PP_gc);
-    setPinOutType(&GPIOA, LED2, GPIO_OTYPER_PP_gc);
-    setPinOutType(&GPIOA, LED3, GPIO_OTYPER_PP_gc);
-
-    setPinOutSpeed(&GPIOA, LED1, GPIO_OSPEEDR_LOW_gc);
-    setPinOutSpeed(&GPIOA, LED2, GPIO_OSPEEDR_LOW_gc);
-    setPinOutSpeed(&GPIOA, LED3, GPIO_OSPEEDR_LOW_gc);
-
-    setPinPull(&GPIOA, LED1, GPIO_PUPDR_PULLUP_gc);
-    setPinPull(&GPIOA, LED2, GPIO_PUPDR_PULLUP_gc);
-    setPinPull(&GPIOA, LED3, GPIO_PUPDR_PULLUP_gc);
-
-    // Port B
-
     // Inputs
 
-    setPin(&GPIOA, LED1);
-    setPin(&GPIOA, LED2);
-    setPin(&GPIOA, LED3);
-
     // Initialize timers
-    //initTimer(PWM_TIMER);
-    //GPIO_SetBits(LED1_PORT, LED1);
+    initTimer(&PWM_TIMER);
+    setPin(&LED1_PORT, LED1);
 }
-/*void initTimer(TIM_TypeDef* timer)
+void initTimer(AC_TIM_t* tim)
 {
-    // Set the frequency to the auto-preload register
-    timer->ARR = (0xFFFF & PWM_FREQ_REG);
-    // Set the pulse width to the capture/compare register
-    // TODO: remove channel specific settings and make separate init
-    timer->CCR1 = (0xFFFF & PWM_PW_REG);
-    timer->CCR2 = (0xFFFF & PWM_PW_REG);
-    // Set timer to center-aligned mode 1, OC flags set when counting down
-    timer->CCMR1 |= (TIM_CCMR1_OC1M & (0x06<<4));
-    timer->CCMR1 |= (TIM_CCMR1_OC2M & (0x06<<12));
-    // Set OCxPE bit to enable preload register
-    // TODO: channel specific
-    timer->CCMR1 |= (TIM_CCMR1_OC1PE | TIM_CCMR1_OC2PE);
-    // Enable auto-reload preload
-    timer->CR1 |= TIM_CR1_ARPE;
-    // Set UG bit to cause update event to initialize the registers
-    timer->EGR = TIM_EGR_UG;
-    // Enable counter 
-    timer->CR1 |= TIM_CR1_CEN;
-    
-    // Set output compares, channels have to be OFF to set CCnS register 
-    //timer->CCMR1 |= (TIM_CCMR1_CC1S & 0x00);
+    // Enable line driver
+    resetPin(&DRVR_OE_PORT, DRVR_OE);
 
-    // Enable output compare channels
-    // TODO: channel specific
-    timer->CCER = ( TIM_CCER_CC1E | TIM_CCER_CC1NE | 
-                    TIM_CCER_CC2E | TIM_CCER_CC2NE);
-
-    // Enable correct output pin alternate functions
-    // Configure pins as outputs
-    ((GPIO_TypeDef*)GPIOA)->MODER |= (GPIO_MODER_MODER8_0 | GPIO_MODER_MODER9_0);
-    ((GPIO_TypeDef*)GPIOB)->MODER |= (GPIO_MODER_MODER0_0 | GPIO_MODER_MODER13_0);
-    // PA8
-    ((GPIO_TypeDef*)GPIOA)->AFR[1] |= (GPIO_AFRH_AFRH0 & GPIO_AF_6);
-    // PA9
-    ((GPIO_TypeDef*)GPIOA_BASE)->AFR[1] |= (GPIO_AFRH_AFRH1 & (GPIO_AF_6<<4));
-    // PB13
-    ((GPIO_TypeDef*)GPIOB_BASE)->AFR[1] |= (GPIO_AFRH_AFRH5 & (GPIO_AF_6<<20));
-    // PB0
-    ((GPIO_TypeDef*)GPIOB_BASE)->AFR[0] |= (GPIO_AFRL_AFRL0 & GPIO_AF_6);
-
-    // Main output enable
-    timer->BDTR = TIM_BDTR_MOE;
-}*/
+    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_CC1S_bm, AC_TIM_CCMR1_CC1S_OUT_gc);
+    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_CC2S_bm, AC_TIM_CCMR1_CC2S_OUT_gc);
+    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_OC1M_bm, AC_TIM_CCMR1_OC1M_PWMM1_gc);
+    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_OC2M_bm, AC_TIM_CCMR1_OC2M_PWMM1_gc);
+    SET_REG_MASK(tim->ARR, AC_TIM_ARR_ARR_bm, 0x0FFF);
+    SET_REG_MASK(tim->CCR1, AC_TIM_CCR1_CCR1_bm, 0xF0);
+    SET_REG_MASK(tim->CCR2, AC_TIM_CCR2_CCR2_bm, 0xFF);
+    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_OC1PE_bm, AC_TIM_CCMR1_OC1PE_EN_gc);
+    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_OC2PE_bm, AC_TIM_CCMR1_OC2PE_EN_gc);
+    SET_REG_MASK(tim->CR1, AC_TIM_CR1_ARPE_bm, AC_TIM_CR1_ARPE_BUF_gc);
+    SET_REG_MASK(tim->CR1, AC_TIM_CR1_CMS_bm, AC_TIM_CR1_CMS_CENTER1_gc);
+    SET_REG_MASK(tim->CCER, AC_TIM_CCER_CC1E_bm, AC_TIM_CCER_CC1E_EN_gc);
+    SET_REG_MASK(tim->CCER, AC_TIM_CCER_CC2E_bm, AC_TIM_CCER_CC2E_EN_gc);
+    SET_REG_MASK(tim->CCER, AC_TIM_CCER_CC1NE_bm, AC_TIM_CCER_CC1NE_EN_gc);
+    SET_REG_MASK(tim->CCER, AC_TIM_CCER_CC2NE_bm, AC_TIM_CCER_CC2NE_EN_gc);
+    SET_REG_MASK(tim->EGR, AC_TIM_EGR_UG_bm, AC_TIM_EGR_UG_REINIT_gc);
+    SET_REG_MASK(tim->CR1, AC_TIM_CR1_CEN_bm, AC_TIM_CR1_CEN_EN_gc);
+    SET_REG_MASK(tim->BDTR, AC_TIM_BDTR_AOE_bm, AC_TIM_BDTR_AOE_EN_gc);
+}
 // Dummy function to avoid compiler error
 void _init() {}
