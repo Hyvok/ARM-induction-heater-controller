@@ -1,6 +1,6 @@
 # Project sources
 #SRCS = Main.c stm32f30x_it.c system_stm32f30x.c
-SRCS = Main.c
+SRCS = Main.c gpio.c clocks.c dpll.c pwm.c handlers.c
 
 # all the files will be generated with this name (main.elf, main.bin, main.hex, etc)
 
@@ -27,8 +27,8 @@ CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 SIZE=arm-none-eabi-size
 
-CFLAGS  = -std=gnu99 -g -Wall -O0 -Tstm32_flash.ld -D$(MCU) \
-		  -Wl,-Map=$(OUTPATH)/main.map
+CFLAGS  = -std=gnu99 -Wall -O0 -Tstm32_flash.ld -D$(MCU) \
+		  -Wl,-Map=$(OUTPATH)/main.map -ggdb -g3
 CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -nostartfiles -mcpu=cortex-m4
 
 ifeq ($(FLOAT_TYPE), hard)
@@ -50,7 +50,7 @@ ROOT=$(shell pwd)
 #CFLAGS += -Ilib/inc/core -Ilib/inc/peripherals
 
 # add startup file to build
-SRCS += lib/startup_stm32f30x.s
+SRCS += src/startup_stm32f30x.s
 
 # Libraries to use
 #LIBS = -Llib -lstm32f3 -lm

@@ -21,12 +21,37 @@
 #define DRVR_OE         GPIO_PIN_10
 
 // Timers
-#define PWM_TIMER       TIM1
+#define PWM_TIM         TIM1
+#define PWM_CH_CCR      TIM1.CCR1
+#define PWM_TIM_IRQH    TIM1_CC_IRQHandler
+#define PWM_TIM_IRQN    TIM1_CC_IRQn
 #define PWM_CH1_PORT    GPIOA
 #define PWM_CH1         GPIO_PIN_8
-#define PWM_CH2_PORT    GPIOA
-#define PWM_CH2         GPIO_PIN_9
 #define PWM_CH1N_PORT   GPIOB
 #define PWM_CH1N        GPIO_PIN_13
-#define PWM_CH2N_PORT   GPIOB
-#define PWM_CH2N        GPIO_PIN_0
+
+// Timer to use for DPLL
+#define IC_TIM          TIM8
+
+// Defines related to digital PLL algorithm
+// Maximum allowed period between rising edges of feedback and output signal
+#define MAX_PERIOD      0xFFFF
+#define DERIV_TERM      64
+#define PROP_TERM       0.5
+
+// Timer to use for flow-meter
+// TODO: check pins!
+#define FLOW_TIM        TIM3
+#define FLOW_PIN_PORT   GPIOA
+#define FLOW_PIN        GPIO_PIN_1
+#define TICK_PER_L      12
+
+// SysTick related
+#define SYSTICKS_IN_SEC 1000
+
+// Comparators
+#define FB_COMP         COMP1
+#define FB_COMP_IRQH    COMP1_2_3_IRQHandler
+#define FB_COMP_IRQN    COMP1_2_3_IRQn
+#define FB_PIN_PORT     GPIOA
+#define FB_PIN          GPIO_PIN_0

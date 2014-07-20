@@ -1,123 +1,96 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include "stm32f30x_new.h"
+#include "macros.h"
 #include "hw.h"
+#include "gpio.h"
+#include "clocks.h"
+#include "dpll.h"
+#include "pwm.h"
+#ifdef USE_USART
+#include "usart.h"
+#endif // USE_USART
+#ifdef USE_FLOW_METER
+#include "flow_meter.h"
+#endif // USE_FLOW_METER
 
-// Initial guess for the TIMx_ARR register, sets frequency, 
-// depends on timer clock speed
-#define PWM_FREQ_REG 0x8000
-// Initial guess for the TIMx_CCRn register, sets pulse width, 
-// depends on timer clock speed
-#define PWM_PW_REG 0x8000
-
-// Helper macros
-// Set register bits specified by mask to value
-#define SET_REG_MASK(reg, mask, val)    (reg = ((reg & ~mask)) | val)
-
-typedef enum
-{
-    LOW = 0x00,
-    HIGH = 0x01
-} PIN_STATE_t;
+// Initial guess for the TIMx_ARR and CCRn registers, sets frequency, pulse-width
+#define INIT_PWM_FREQ   0x550
+#define INIT_PW         (INIT_PWM_FREQ / 2)
+#define PWM_PRESCALER   0x00
 
 typedef enum
 {
-    DISABLE,
-    ENABLE
-} EN_t;
+    RISING_EDGE,
+    FALLING_EDGE,
+    BOTH_EDGE
+} EDGE_t;
 
 // Private function prototypes
-void Delay(void);
+void systemInit();
+static void setSysClock();
+static void NVIC_EnableIRQ(IRQn_t IRQn);
 void init();
-void initTimer(AC_TIM_t* tim);
+void initPwmTimer();
+void initIcTimer();
+void initComp();
+void initInterrupt(IRQn_t irq, uint8_t preEmptPrio, uint8_t subPrio, EN_t state);
+void initExtiLine(EXTIn_t exti, EDGE_t edge);
+void enableInterrupts();
+void disableInterrupts();
+#ifdef USE_USART
+void processDevice( struct Usart *usart, 
+                    int8_t (*parser)(struct Usart *usart, void *ptr),
+                    void (*process)(struct Usart *usart, void *ptr),
+                    void* ptr);
+#endif // USE_USART
 
-void setPinMode(GPIO_t* port, GPIO_PIN_t pin, GPIO_MODER_t mode)
+int main(void) 
 {
-    SET_REG_MASK(   port->MODER, (GPIO_MODER_MODER0_bm << (pin * 2)), 
-                    (mode << (pin * 2)));
-}
-void setPinOutType(GPIO_t* port, GPIO_PIN_t pin, GPIO_OTYPER_t type)
-{
-    SET_REG_MASK(port->OTYPER, (GPIO_OTYPER_OT0_bm << pin), (type << pin));
-}
-void setPinOutSpeed(GPIO_t* port, GPIO_PIN_t pin, GPIO_OSPEEDR_t speed)
-{
-    SET_REG_MASK(   port->OSPEEDR, (GPIO_OSPEEDR_OSPEEDR0_bm << (pin * 2)), 
-                    (speed << (pin * 2)));
-}
-void setPinPull(GPIO_t* port, GPIO_PIN_t pin, GPIO_PUPDR_t pull)
-{
-    SET_REG_MASK(   port->PUPDR, (GPIO_PUPDR_PUPDR0_bm << (pin * 2)), 
-                    (pull << (pin * 2)));
-}
-void setAltFunct(GPIO_t* port, GPIO_PIN_t pin, GPIO_AFR_t af)
-{
-    if(pin <= 7)
+    systemInit();
+    init();
+
+	for(;;) 
     {
-        SET_REG_MASK(   port->AFRL, (GPIO_AFR_AFR_bm << (pin * 4)), 
-                        (af << (pin * 4)));
+        // Run DPLL algorithm if we have a new count
+        computeDpll();
+#ifdef USE_USART
+        // Process all device data
+        processDevice(&sensorsUsart, parseProtocol, processProtocol, 0);
+
+        if(sendData)
+        {
+            // Clear flag
+            sendData = false;
+            // TODO: set values to send in protocol library
+        }
+#endif // USE_USART
     }
-    else
-    {
-        SET_REG_MASK(   port->AFRH, (GPIO_AFR_AFR_bm << (pin * 4)), 
-                        (af << ((pin - 8) * 4)));
-    }
+
+	return 0;
 }
-PIN_STATE_t getInPinState(GPIO_t* port, GPIO_PIN_t pin)
+void systemInit()
 {
-    return (PIN_STATE_t)((port->IDR & (GPIO_IDR_IDR0_bm << pin)) >> pin);
+
+    //#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
+    // FPU settings, set CP10 and CP11 full access
+    SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));
+    //#endif
+
+    // Configure the clocks
+    setSysClock();
+
+    #ifdef VECT_TAB_SRAM
+    // Vector Table Relocation in Internal SRAM
+    SCB->VTOR = SRAM_BASE | VECT_TAB_OFFSET; 
+    #else
+    // Vector Table Relocation in Internal FLASH
+    SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; 
+    #endif  
 }
-PIN_STATE_t getOutPinState(GPIO_t* port, GPIO_PIN_t pin)
-{
-    return (PIN_STATE_t)((port->ODR & (GPIO_ODR_ODR0_bm << pin)) >> pin);
-}
-void setPin(GPIO_t* port, GPIO_PIN_t pin)
-{
-    port->BSRR = (0x01 << pin);
-}
-void resetPin(GPIO_t* port, GPIO_PIN_t pin)
-{
-    port->BSRR = ((0x01 << pin) << 16);
-}
-void setPort(GPIO_t* port, uint16_t val)
-{
-    port->ODR = val;
-}
-void enableAhbPeriphClk(RCC_AHBENR_t periph, EN_t state)
-{
-    if(state == ENABLE)
-    {
-        RCC->AHBENR |= periph;
-    }
-    else
-    {
-        RCC->AHBENR &= ~periph;
-    }
-}
-void enableApb1PeriphClk(RCC_APB1ENR_t periph, EN_t state)
-{
-    if(state == ENABLE)
-    {
-        RCC->APB1ENR |= periph;
-    }
-    else
-    {
-        RCC->APB1ENR &= ~periph;
-    }
-}
-void enableApb2PeriphClk(RCC_APB2ENR_t periph, EN_t state)
-{
-    if(state == ENABLE)
-    {
-        RCC->APB2ENR |= periph;
-    }
-    else
-    {
-        RCC->APB2ENR &= ~periph;
-    }
-}
-static void SetSysClock()
+static void setSysClock()
 {
     uint32_t startUpCounter = 0, hsiStatus = 0;
 
@@ -147,10 +120,10 @@ static void SetSysClock()
 
         // HCLK = SYSCLK, PCLK1, PCLK2 = HCLK
         RCC->CFGR |= (  RCC_CFGR_HPRE_NODIV_gc | RCC_CFGR_PPRE2_NODIV_gc |
-                        RCC_CFGR_PPRE1_DIVBY2_gc);
+                        RCC_CFGR_PPRE1_NODIV_gc);
 
-        // PLL configuration: PLLCLK = HSI * 9 = 72 MHz
-        RCC->CFGR |= (RCC_CFGR_PLLSRC_HSIDIVBY2_gc | RCC_CFGR_PLLMUL_9_gc);
+        // PLL configuration: PLLCLK = HSI/2 * 17 = 68 MHz
+        RCC->CFGR |= (RCC_CFGR_PLLSRC_HSIDIVBY2_gc | RCC_CFGR_PLLMUL_17_gc);
 
         // Enable PLL
         RCC->CR |= RCC_CR_PLLON_ON_gc;
@@ -171,40 +144,13 @@ static void SetSysClock()
          configuration. User can add here some code to deal with this error */
     }
 }
-void SystemInit()
-{
-
-    #if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
-    // FPU settings, set CP10 and CP11 full access
-    SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));
-    #endif
-
-    // Configure the clocks
-    SetSysClock();
-
-    #ifdef VECT_TAB_SRAM
-    SCB->VTOR = SRAM_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal SRAM. */
-    #else
-    SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; /* Vector Table Relocation in Internal FLASH. */
-    #endif  
-}
-int main(void) 
-{
-    SystemInit();
-    init();
-
-	for(;;) 
-    {
-    }
-
-	return 0;
-}
-
 void init() {
-    // Clocks
+    // GPIO clocks
     enableAhbPeriphClk(RCC_AHBENR_IOPAEN_gc, ENABLE);
     enableAhbPeriphClk(RCC_AHBENR_IOPBEN_gc, ENABLE);
-    enableApb2PeriphClk(RCC_APB2ENR_TIM1EN_gc, ENABLE);
+
+    // SysCfg clock, needed for EXTI
+    enableApb2PeriphClk(RCC_APB2ENR_SYSCFGEN_gc, ENABLE);
 
     // LEDs
     setPinMode(&LED1_PORT, LED1, GPIO_MODER_OUT_gc);
@@ -216,44 +162,227 @@ void init() {
     setPin(&DRVR_OE_PORT, DRVR_OE);
 
     setAltFunct(&PWM_CH1_PORT, PWM_CH1, GPIO_AFR_AF6_gc);
-    setAltFunct(&PWM_CH2_PORT, PWM_CH2, GPIO_AFR_AF6_gc);
     setAltFunct(&PWM_CH1N_PORT, PWM_CH1N, GPIO_AFR_AF6_gc);
-    setAltFunct(&PWM_CH2N_PORT, PWM_CH2N, GPIO_AFR_AF6_gc);
 
     setPinMode(&PWM_CH1_PORT, PWM_CH1, GPIO_MODER_AF_gc);
-    setPinMode(&PWM_CH2_PORT, PWM_CH2, GPIO_MODER_AF_gc);
     setPinMode(&PWM_CH1N_PORT, PWM_CH1N, GPIO_MODER_AF_gc);
-    setPinMode(&PWM_CH2N_PORT, PWM_CH2N, GPIO_MODER_AF_gc);
     
     // Inputs
+    // Comparator
+    setPinMode(&FB_PIN_PORT, FB_PIN, GPIO_MODER_ANA_gc);
 
-    // Initialize timers
-    initTimer(&PWM_TIMER);
-    setPin(&LED1_PORT, LED1);
-}
-void initTimer(AC_TIM_t* tim)
-{
+#ifdef USE_FLOW_METER
+    // Timer/counter input pin for flow-meter
+    // TODO: check pins for flow-meter!
+    setPinMode(&FLOW_PIN_PORT, FLOW_PIN, GPIO_MODER_AF_gc);
+    setAltFunct(&FLOW_PIN_PORT, FLOW_PIN, GPIO_AFR_AF0_gc);
+#endif // USE_FLOW_METER
+
+    // Enable interrupts
+    initInterrupt(PWM_TIM_IRQN, 0, 1, ENABLE);
+    //NVIC_EnableIRQ(PWM_TIM_IRQN);
+    //NVIC_EnableIRQ(FB_COMP_IRQN);
+
+#ifdef USE_USART
+    // USARTs
+    SETUP_USART( CONTROL_USART );
+    // Configure all usarts
+    initUsart(&controlUsart, USART_115200_BPS, 0);
+#endif // USE_USART
+
     // Enable line driver
+    // Initialize timers
     resetPin(&DRVR_OE_PORT, DRVR_OE);
+    initPwmTimer();
+    initComp();
+    initIcTimer();
+    setPin(&LED1_PORT, LED1);
 
-    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_CC1S_bm, AC_TIM_CCMR1_CC1S_OUT_gc);
-    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_CC2S_bm, AC_TIM_CCMR1_CC2S_OUT_gc);
-    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_OC1M_bm, AC_TIM_CCMR1_OC1M_PWMM1_gc);
-    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_OC2M_bm, AC_TIM_CCMR1_OC2M_PWMM1_gc);
-    SET_REG_MASK(tim->ARR, AC_TIM_ARR_ARR_bm, 0x0FFF);
-    SET_REG_MASK(tim->CCR1, AC_TIM_CCR1_CCR1_bm, 0xF0);
-    SET_REG_MASK(tim->CCR2, AC_TIM_CCR2_CCR2_bm, 0xFF);
-    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_OC1PE_bm, AC_TIM_CCMR1_OC1PE_EN_gc);
-    SET_REG_MASK(tim->CCMR1, AC_TIM_CCMR1_OC2PE_bm, AC_TIM_CCMR1_OC2PE_EN_gc);
-    SET_REG_MASK(tim->CR1, AC_TIM_CR1_ARPE_bm, AC_TIM_CR1_ARPE_BUF_gc);
-    SET_REG_MASK(tim->CR1, AC_TIM_CR1_CMS_bm, AC_TIM_CR1_CMS_CENTER1_gc);
-    SET_REG_MASK(tim->CCER, AC_TIM_CCER_CC1E_bm, AC_TIM_CCER_CC1E_EN_gc);
-    SET_REG_MASK(tim->CCER, AC_TIM_CCER_CC2E_bm, AC_TIM_CCER_CC2E_EN_gc);
-    SET_REG_MASK(tim->CCER, AC_TIM_CCER_CC1NE_bm, AC_TIM_CCER_CC1NE_EN_gc);
-    SET_REG_MASK(tim->CCER, AC_TIM_CCER_CC2NE_bm, AC_TIM_CCER_CC2NE_EN_gc);
-    SET_REG_MASK(tim->EGR, AC_TIM_EGR_UG_bm, AC_TIM_EGR_UG_REINIT_gc);
-    SET_REG_MASK(tim->CR1, AC_TIM_CR1_CEN_bm, AC_TIM_CR1_CEN_EN_gc);
-    SET_REG_MASK(tim->BDTR, AC_TIM_BDTR_AOE_bm, AC_TIM_BDTR_AOE_EN_gc);
+    // TODO: global interrupt enable?
+    enableInterrupts();
 }
+void initPwmTimer()
+{
+    // TODO: timer outputs not resetting consistently, FIX!
+    // Before enabling TIM1 clock, set it to use doubled PLL as the clock
+    SET_MASK(RCC->CFGR3, RCC_CFGR3_TIM1SW_bm, RCC_CFGR3_TIM1SW_PLL_gc);
+    enableApb2PeriphClk(RCC_APB2ENR_TIM1EN_gc, ENABLE);
+
+    // Set OC1 as output compare
+    SET_MASK(PWM_TIM.CCMR1, AC_TIM_CCMR1_CC1S_bm, AC_TIM_CCMR1_CC1S_OUT_gc);
+    // Set PWM mode to PWM mode 1
+    SET_MASK(PWM_TIM.CCMR1, AC_TIM_CCMR1_OC1M_bm, AC_TIM_CCMR1_OC1M_PWMM1_gc);
+    // Put initial frequency and prescaler value to the auto-reload register
+    PWM_TIM.ARR = INIT_PWM_FREQ;
+    PWM_TIM.PSC = PWM_PRESCALER;
+    // Put initial pulse-width values to the capture/compare registers
+    PWM_TIM.CCR1 = INIT_PW;
+    // Enable OC1 and OC2 pre-load
+    SET_MASK(PWM_TIM.CCMR1, AC_TIM_CCMR1_OC1PE_bm, AC_TIM_CCMR1_OC1PE_EN_gc);
+    // Enable pre-load
+    SET_MASK(PWM_TIM.CR1, AC_TIM_CR1_ARPE_bm, AC_TIM_CR1_ARPE_BUF_gc);
+    // Set counter mode to center-aligned (interrupt when counting up)
+    SET_MASK(PWM_TIM.CR1, AC_TIM_CR1_CMS_bm, AC_TIM_CR1_CMS_CENTER2_gc);
+    SET_MASK(PWM_TIM.DIER, AC_TIM_DIER_CC1IE_bm, AC_TIM_DIER_CC1IE_EN_gc);
+    SET_MASK(PWM_TIM.DIER, AC_TIM_DIER_UIE_bm, AC_TIM_DIER_UIE_EN_gc);
+    // Enable capture/compares and their complementary channels
+    SET_MASK(PWM_TIM.CCER, AC_TIM_CCER_CC1E_bm, AC_TIM_CCER_CC1E_EN_gc);
+    SET_MASK(PWM_TIM.CCER, AC_TIM_CCER_CC1NE_bm, AC_TIM_CCER_CC1NE_EN_gc);
+    // Set UG bit to cause update event to load register values from pre-load
+    SET_MASK(PWM_TIM.EGR, AC_TIM_EGR_UG_bm, AC_TIM_EGR_UG_REINIT_gc);
+    // Enable counter
+    SET_MASK(PWM_TIM.CR1, AC_TIM_CR1_CEN_bm, AC_TIM_CR1_CEN_EN_gc);
+    // Set automatic output enable
+    SET_MASK(PWM_TIM.BDTR, AC_TIM_BDTR_AOE_bm, AC_TIM_BDTR_AOE_EN_gc);
+}
+void initIcTimer()
+{
+    // Enable clock, enable 2x PLL clock
+    enableApb2PeriphClk(RCC_APB2ENR_TIM8EN_gc, ENABLE);
+    SET_MASK(RCC->CFGR3, RCC_CFGR3_TIM8SW_bm, RCC_CFGR3_TIM8SW_PLL_gc);
+    // Set maximum period
+    IC_TIM.ARR = MAX_PERIOD;
+}
+void initComp()
+{
+    //SET_MASK(FB_COMP.CSR, COMP1_CSR_POL_bm, COMP1_CSR_POL_INV_gc);
+    // Set negative input to be vcc/2
+    SET_MASK(FB_COMP.CSR, COMP1_CSR_INMSEL_bm, COMP1_CSR_INMSEL_VCCDIV2_gc);
+    // Enable comparator
+    SET_MASK(FB_COMP.CSR, COMP1_CSR_EN_bm, COMP1_CSR_EN_EN_gc);
+    initExtiLine(EXTI_21n, RISING_EDGE);
+    initInterrupt(FB_COMP_IRQN, 0, 1, ENABLE);
+}
+/* A function for initializing (enabling or disabling) an interrupt
+ * @param irq       Specifies the IRQ channel number in question
+ * @param preEmptPrio   Specifies the pre-emption priority for the IRQ channel 
+ *                  specified in NVIC_IRQChannel. This parameter can be a value 
+ *                  between 0 and 15. A lower priority value indicates a higher 
+ *                  priority.
+ * @param state     Enable or disable interrupt in question.
+ * @param subPrio   Specifies the subpriority level for the IRQ channel 
+ *                  specified NVIC_IRQChannel. This parameter can be a value 
+ *                  between 0 and 15. A lower priority value indicates a higher 
+ *                  priority.
+ */
+void initInterrupt(IRQn_t irq, uint8_t preEmptPrio, uint8_t subPrio, EN_t state)
+{
+    // TODO: get rid of ugly magic number code
+    uint32_t tmppriority = 0x00, tmppre = 0x00, tmpsub = 0x0F;
+
+    if(state == ENABLE)
+    {
+        /* Compute the Corresponding IRQ Priority --------------------------------*/    
+        tmppriority = (0x700 - ((SCB->AIRCR) & (uint32_t)0x700))>> 0x08;
+        tmppre = (0x4 - tmppriority);
+        tmpsub = tmpsub >> tmppriority;
+
+        tmppriority = (uint32_t)preEmptPrio << tmppre;
+        tmppriority |=  subPrio & tmpsub;
+        tmppriority = tmppriority << 0x04;
+
+        NVIC->IP[irq] = tmppriority;
+
+        /* Enable the Selected IRQ Channels --------------------------------------*/
+        NVIC->ISER[irq >> 0x05] = (uint32_t)0x01 << (irq & (uint8_t)0x1F);
+    }
+    else
+    {
+        /* Disable the Selected IRQ Channels -------------------------------------*/
+        NVIC->ICER[irq >> 0x05] = (uint32_t)0x01 << (irq & (uint8_t)0x1F);
+    }
+}
+void initExtiLine(EXTIn_t exti, EDGE_t edge)
+{
+    // TODO: does not work with lines over 31
+    // Clear pending bit
+    EXTI->PR = 0x200000;
+    //EXTI->PR &= ~(0x01 << exti);
+    //EXTI->PR = 0; 
+
+    EXTI->IMR = (0x01 << exti);
+
+    switch(edge)
+    {
+        case RISING_EDGE:
+            EXTI->RTSR = (0x01 << exti);
+            break;
+        case FALLING_EDGE:
+            EXTI->FTSR = (0x01 << exti);
+            break;
+        case BOTH_EDGE:
+            EXTI->RTSR = (0x01 << exti);
+            EXTI->FTSR = (0x01 << exti);
+            break;
+    }
+
+}
+static void NVIC_EnableIRQ(IRQn_t IRQn)
+{
+/*  NVIC->ISER[((uint32_t)(IRQn) >> 5)] = (1 << ((uint32_t)(IRQn) & 0x1F));  enable interrupt */
+  NVIC->ISER[(uint32_t)((int32_t)IRQn) >> 5] = (uint32_t)(1 << ((uint32_t)((int32_t)IRQn) & (uint32_t)0x1F)); /* enable interrupt */
+}
+void enableInterrupts()
+{
+    __asm("CPSIE I");
+}
+void disableInterrupts()
+{
+    __asm("CPSID I");
+    // Barrier to prevent interrupt to fire on next line due to pipeline
+    __asm("ISB");
+}
+#ifdef USE_USART
+/*-----------------------------------------------------------------*/
+// Process device data
+//
+void processDevice(struct Usart *usart,
+    int8_t (*parser)(struct Usart *usart, void *ptr),
+    void (*process)(struct Usart *usart, void *ptr),
+    void *ptr)
+{
+
+    // Loop until all data has been parsed
+    while (usart->received)
+    {
+        // Parse the data in receive queue
+        int8_t used = parser( usart, ptr );
+
+
+        // Update timeout when waiting
+        if (used == 0 && pingTimer != processTimer)
+		{
+            // Remove first byte when waiting too long
+            if (usart->timeout++ > 4)
+                used = -1;
+		}
+
+        // Are we waiting for more data
+        if (used == 0)
+            break;
+
+        // Clear timeout
+        usart->timeout = 0;
+
+        // Is the data invalid
+        if (used < 0)
+        {
+            // Debug error data
+            send(&sensorsUsart, 0xEE);
+            send(&sensorsUsart, usart->rx[0]);
+
+            // Invalid data, remove first and retry
+            removeData(usart, 1);
+            continue;
+        }
+
+        removeData(usart, used);
+    }
+
+    // Process device data
+    process( usart, ptr );
+
+}
+#endif // USE_USART
 // Dummy function to avoid compiler error
 void _init() {}
