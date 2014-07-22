@@ -36,11 +36,15 @@
 // Defines related to digital PLL algorithm
 // Maximum allowed period between rising edges of feedback and output signal
 #define MAX_PERIOD      0xFFFF
-#define DERIV_TERM      64
-#define PROP_TERM       0.5
+#define INTEG_TERM      0.01
+#define DERIV_TERM      0.0
+#define PROP_TERM       0.0008
+// PD-controller input (=time difference) normalization factor from clock ticks to ns
+#define IN_NORM_FACTOR  (1000/136)
+#define PWM_STEPS       65535 
 
 // Timer to use for flow-meter
-// TODO: check pins!
+// TODO: check pins
 #define FLOW_TIM        TIM3
 #define FLOW_PIN_PORT   GPIOA
 #define FLOW_PIN        GPIO_PIN_1
@@ -53,5 +57,6 @@
 #define FB_COMP         COMP1
 #define FB_COMP_IRQH    COMP1_2_3_IRQHandler
 #define FB_COMP_IRQN    COMP1_2_3_IRQn
+#define FB_COMP_EXTIN   EXTI_21n
 #define FB_PIN_PORT     GPIOA
 #define FB_PIN          GPIO_PIN_0

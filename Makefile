@@ -1,6 +1,6 @@
 # Project sources
 #SRCS = Main.c stm32f30x_it.c system_stm32f30x.c
-SRCS = Main.c gpio.c clocks.c dpll.c pwm.c handlers.c
+SRCS = Main.c gpio.c clocks.c dpll.c pwm.c exti.c interrupts.c handlers.c pid_controller.c
 
 # all the files will be generated with this name (main.elf, main.bin, main.hex, etc)
 

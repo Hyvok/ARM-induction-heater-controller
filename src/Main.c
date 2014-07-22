@@ -9,6 +9,8 @@
 #include "clocks.h"
 #include "dpll.h"
 #include "pwm.h"
+#include "interrupts.h"
+#include "exti.h"
 #ifdef USE_USART
 #include "usart.h"
 #endif // USE_USART
@@ -21,25 +23,13 @@
 #define INIT_PW         (INIT_PWM_FREQ / 2)
 #define PWM_PRESCALER   0x00
 
-typedef enum
-{
-    RISING_EDGE,
-    FALLING_EDGE,
-    BOTH_EDGE
-} EDGE_t;
-
 // Private function prototypes
 void systemInit();
 static void setSysClock();
-static void NVIC_EnableIRQ(IRQn_t IRQn);
 void init();
 void initPwmTimer();
 void initIcTimer();
 void initComp();
-void initInterrupt(IRQn_t irq, uint8_t preEmptPrio, uint8_t subPrio, EN_t state);
-void initExtiLine(EXTIn_t exti, EDGE_t edge);
-void enableInterrupts();
-void disableInterrupts();
 #ifdef USE_USART
 void processDevice( struct Usart *usart, 
                     int8_t (*parser)(struct Usart *usart, void *ptr),
@@ -54,7 +44,7 @@ int main(void)
 
 	for(;;) 
     {
-        // Run DPLL algorithm if we have a new count
+        // Run DPLL algorithm if we have a new count, adjusts PWM-frequency
         computeDpll();
 #ifdef USE_USART
         // Process all device data
@@ -73,7 +63,6 @@ int main(void)
 }
 void systemInit()
 {
-
     //#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
     // FPU settings, set CP10 and CP11 full access
     SCB->CPACR |= ((3UL << 10*2)|(3UL << 11*2));
@@ -198,6 +187,9 @@ void init() {
     initIcTimer();
     setPin(&LED1_PORT, LED1);
 
+    // Software modules
+    initDpll();
+
     // TODO: global interrupt enable?
     enableInterrupts();
 }
@@ -208,26 +200,41 @@ void initPwmTimer()
     SET_MASK(RCC->CFGR3, RCC_CFGR3_TIM1SW_bm, RCC_CFGR3_TIM1SW_PLL_gc);
     enableApb2PeriphClk(RCC_APB2ENR_TIM1EN_gc, ENABLE);
 
+    uint32_t tempCcmr1 = PWM_TIM.CCMR1;
     // Set OC1 as output compare
-    SET_MASK(PWM_TIM.CCMR1, AC_TIM_CCMR1_CC1S_bm, AC_TIM_CCMR1_CC1S_OUT_gc);
+    SET_MASK(tempCcmr1, AC_TIM_CCMR1_CC1S_bm, AC_TIM_CCMR1_CC1S_OUT_gc);
     // Set PWM mode to PWM mode 1
-    SET_MASK(PWM_TIM.CCMR1, AC_TIM_CCMR1_OC1M_bm, AC_TIM_CCMR1_OC1M_PWMM1_gc);
+    SET_MASK(tempCcmr1, AC_TIM_CCMR1_OC1M_bm, AC_TIM_CCMR1_OC1M_PWMM1_gc);
+    SET_MASK(tempCcmr1, AC_TIM_CCMR1_OC1PE_bm, AC_TIM_CCMR1_OC1PE_EN_gc);
+    PWM_TIM.CCMR1 = tempCcmr1;
+
     // Put initial frequency and prescaler value to the auto-reload register
     PWM_TIM.ARR = INIT_PWM_FREQ;
     PWM_TIM.PSC = PWM_PRESCALER;
     // Put initial pulse-width values to the capture/compare registers
     PWM_TIM.CCR1 = INIT_PW;
-    // Enable OC1 and OC2 pre-load
-    SET_MASK(PWM_TIM.CCMR1, AC_TIM_CCMR1_OC1PE_bm, AC_TIM_CCMR1_OC1PE_EN_gc);
+
+    // Enable OC1 pre-load
+    // TODO: changed location: SET_MASK(PWM_TIM.CCMR1, AC_TIM_CCMR1_OC1PE_bm, AC_TIM_CCMR1_OC1PE_EN_gc);
+    uint32_t tempCr1 = PWM_TIM.CR1;   
     // Enable pre-load
-    SET_MASK(PWM_TIM.CR1, AC_TIM_CR1_ARPE_bm, AC_TIM_CR1_ARPE_BUF_gc);
+    SET_MASK(tempCr1, AC_TIM_CR1_ARPE_bm, AC_TIM_CR1_ARPE_BUF_gc);
     // Set counter mode to center-aligned (interrupt when counting up)
-    SET_MASK(PWM_TIM.CR1, AC_TIM_CR1_CMS_bm, AC_TIM_CR1_CMS_CENTER2_gc);
-    SET_MASK(PWM_TIM.DIER, AC_TIM_DIER_CC1IE_bm, AC_TIM_DIER_CC1IE_EN_gc);
-    SET_MASK(PWM_TIM.DIER, AC_TIM_DIER_UIE_bm, AC_TIM_DIER_UIE_EN_gc);
+    SET_MASK(tempCr1, AC_TIM_CR1_CMS_bm, AC_TIM_CR1_CMS_CENTER1_gc);
+    PWM_TIM.CR1 = tempCr1;
+
+    // Configure interrupts
+    uint32_t tempDier = PWM_TIM.DIER;
+    SET_MASK(tempDier, AC_TIM_DIER_CC1IE_bm, AC_TIM_DIER_CC1IE_EN_gc);
+    //SET_MASK(tempDier, AC_TIM_DIER_UIE_bm, AC_TIM_DIER_UIE_EN_gc);
+    PWM_TIM.DIER = tempDier;
+
     // Enable capture/compares and their complementary channels
-    SET_MASK(PWM_TIM.CCER, AC_TIM_CCER_CC1E_bm, AC_TIM_CCER_CC1E_EN_gc);
-    SET_MASK(PWM_TIM.CCER, AC_TIM_CCER_CC1NE_bm, AC_TIM_CCER_CC1NE_EN_gc);
+    uint32_t tempCcer = PWM_TIM.CCER;
+    SET_MASK(tempCcer, AC_TIM_CCER_CC1E_bm, AC_TIM_CCER_CC1E_EN_gc);
+    SET_MASK(tempCcer, AC_TIM_CCER_CC1NE_bm, AC_TIM_CCER_CC1NE_EN_gc);
+    PWM_TIM.CCER = tempCcer;
+
     // Set UG bit to cause update event to load register values from pre-load
     SET_MASK(PWM_TIM.EGR, AC_TIM_EGR_UG_bm, AC_TIM_EGR_UG_REINIT_gc);
     // Enable counter
@@ -247,90 +254,14 @@ void initComp()
 {
     //SET_MASK(FB_COMP.CSR, COMP1_CSR_POL_bm, COMP1_CSR_POL_INV_gc);
     // Set negative input to be vcc/2
-    SET_MASK(FB_COMP.CSR, COMP1_CSR_INMSEL_bm, COMP1_CSR_INMSEL_VCCDIV2_gc);
+    uint32_t tempCsr = FB_COMP.CSR;
+    SET_MASK(tempCsr, COMP1_CSR_INMSEL_bm, COMP1_CSR_INMSEL_VCCDIV2_gc);
     // Enable comparator
-    SET_MASK(FB_COMP.CSR, COMP1_CSR_EN_bm, COMP1_CSR_EN_EN_gc);
-    initExtiLine(EXTI_21n, RISING_EDGE);
+    SET_MASK(tempCsr, COMP1_CSR_EN_bm, COMP1_CSR_EN_EN_gc);
+    FB_COMP.CSR = tempCsr;
+
+    initExtiLine(FB_COMP_EXTIN, RISING_EDGE);
     initInterrupt(FB_COMP_IRQN, 0, 1, ENABLE);
-}
-/* A function for initializing (enabling or disabling) an interrupt
- * @param irq       Specifies the IRQ channel number in question
- * @param preEmptPrio   Specifies the pre-emption priority for the IRQ channel 
- *                  specified in NVIC_IRQChannel. This parameter can be a value 
- *                  between 0 and 15. A lower priority value indicates a higher 
- *                  priority.
- * @param state     Enable or disable interrupt in question.
- * @param subPrio   Specifies the subpriority level for the IRQ channel 
- *                  specified NVIC_IRQChannel. This parameter can be a value 
- *                  between 0 and 15. A lower priority value indicates a higher 
- *                  priority.
- */
-void initInterrupt(IRQn_t irq, uint8_t preEmptPrio, uint8_t subPrio, EN_t state)
-{
-    // TODO: get rid of ugly magic number code
-    uint32_t tmppriority = 0x00, tmppre = 0x00, tmpsub = 0x0F;
-
-    if(state == ENABLE)
-    {
-        /* Compute the Corresponding IRQ Priority --------------------------------*/    
-        tmppriority = (0x700 - ((SCB->AIRCR) & (uint32_t)0x700))>> 0x08;
-        tmppre = (0x4 - tmppriority);
-        tmpsub = tmpsub >> tmppriority;
-
-        tmppriority = (uint32_t)preEmptPrio << tmppre;
-        tmppriority |=  subPrio & tmpsub;
-        tmppriority = tmppriority << 0x04;
-
-        NVIC->IP[irq] = tmppriority;
-
-        /* Enable the Selected IRQ Channels --------------------------------------*/
-        NVIC->ISER[irq >> 0x05] = (uint32_t)0x01 << (irq & (uint8_t)0x1F);
-    }
-    else
-    {
-        /* Disable the Selected IRQ Channels -------------------------------------*/
-        NVIC->ICER[irq >> 0x05] = (uint32_t)0x01 << (irq & (uint8_t)0x1F);
-    }
-}
-void initExtiLine(EXTIn_t exti, EDGE_t edge)
-{
-    // TODO: does not work with lines over 31
-    // Clear pending bit
-    EXTI->PR = 0x200000;
-    //EXTI->PR &= ~(0x01 << exti);
-    //EXTI->PR = 0; 
-
-    EXTI->IMR = (0x01 << exti);
-
-    switch(edge)
-    {
-        case RISING_EDGE:
-            EXTI->RTSR = (0x01 << exti);
-            break;
-        case FALLING_EDGE:
-            EXTI->FTSR = (0x01 << exti);
-            break;
-        case BOTH_EDGE:
-            EXTI->RTSR = (0x01 << exti);
-            EXTI->FTSR = (0x01 << exti);
-            break;
-    }
-
-}
-static void NVIC_EnableIRQ(IRQn_t IRQn)
-{
-/*  NVIC->ISER[((uint32_t)(IRQn) >> 5)] = (1 << ((uint32_t)(IRQn) & 0x1F));  enable interrupt */
-  NVIC->ISER[(uint32_t)((int32_t)IRQn) >> 5] = (uint32_t)(1 << ((uint32_t)((int32_t)IRQn) & (uint32_t)0x1F)); /* enable interrupt */
-}
-void enableInterrupts()
-{
-    __asm("CPSIE I");
-}
-void disableInterrupts()
-{
-    __asm("CPSID I");
-    // Barrier to prevent interrupt to fire on next line due to pipeline
-    __asm("ISB");
 }
 #ifdef USE_USART
 /*-----------------------------------------------------------------*/
@@ -346,7 +277,7 @@ void processDevice(struct Usart *usart,
     while (usart->received)
     {
         // Parse the data in receive queue
-        int8_t used = parser( usart, ptr );
+        int8_t used = parser(usart, ptr);
 
 
         // Update timeout when waiting

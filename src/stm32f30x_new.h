@@ -1711,12 +1711,12 @@ typedef enum
 
 typedef struct
 {
-  register32_t IMR;        /*!< EXTI Interrupt mask register,                Address offset: 0x00 */
-  register32_t EMR;        /*!< EXTI Event mask register,                    Address offset: 0x04 */
-  register32_t RTSR;       /*!< EXTI Rising trigger selection register,      Address offset: 0x08 */
-  register32_t FTSR;       /*!< EXTI Falling trigger selection register,     Address offset: 0x0C */
-  register32_t SWIER;      /*!< EXTI Software interrupt event register,      Address offset: 0x10 */
-  register32_t PR;         /*!< EXTI Pending register,                       Address offset: 0x14 */
+  register32_t IMR1;        /*!< EXTI Interrupt mask register,                Address offset: 0x00 */
+  register32_t EMR1;        /*!< EXTI Event mask register,                    Address offset: 0x04 */
+  register32_t RTSR1;       /*!< EXTI Rising trigger selection register,      Address offset: 0x08 */
+  register32_t FTSR1;       /*!< EXTI Falling trigger selection register,     Address offset: 0x0C */
+  register32_t SWIER1;      /*!< EXTI Software interrupt event register,      Address offset: 0x10 */
+  register32_t PR1;         /*!< EXTI Pending register,                       Address offset: 0x14 */
   register32_t reserved_0x18;  /*!< Reserved, 0x18                                                    */
   register32_t reserved_0x1c;  /*!< Reserved, 0x1C                                                    */
   register32_t IMR2;       /*!< EXTI Interrupt mask register,                Address offset: 0x20 */

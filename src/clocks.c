@@ -1,4 +1,5 @@
 #include "clocks.h"
+#include "enable_disable_enum.h"
 #include "stm32f30x_new.h"
 
 void enableAhbPeriphClk(RCC_AHBENR_t periph, EN_t state)

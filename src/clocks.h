@@ -2,12 +2,7 @@
 #define CLOCKS_H
 
 #include "stm32f30x_new.h"
-
-typedef enum
-{
-    DISABLE,
-    ENABLE
-} EN_t;
+#include "enable_disable_enum.h"
 
 void enableAhbPeriphClk(RCC_AHBENR_t periph, EN_t state);
 void enableApb1PeriphClk(RCC_APB1ENR_t periph, EN_t state);

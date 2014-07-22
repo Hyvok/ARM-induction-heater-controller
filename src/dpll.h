@@ -3,8 +3,9 @@
 
 #include <stdint.h>
 
+void initDpll();
+void computeDpll();
 void startIcTimer();
 uint16_t stopIcTimer();
-void computeDpll();
 
 #endif // Include guard
