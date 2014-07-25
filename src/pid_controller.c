@@ -15,26 +15,28 @@ struct PidController* initPid(  float prop, float deriv, float integ,
 
     return &pid;
 }
-float computePid(float val)
+float computePid(float currVal)
 {
-    float error = (val * pid.prop) + ((val - pid.lastError) * pid.deriv);
+    currVal *= (-1.0);
+    float proportional = currVal * pid.prop;
+    float out = proportional + ((currVal - pid.lastError) * pid.deriv);
    
     // If the controller output has not saturated, then continue increasing the
     // integral term, otherwise not (to prevent integral windup)
     if(pid.saturated == false && pid.integ != 0)
     {
-       error += pid.lastError * pid.integ;
+       out += proportional * pid.integ;
     }
 
-    // Cap error value if output saturates
-    if(error > pid.posCap)
+    // Cap out currValue if output saturates
+    if(out > pid.posCap)
     {
-        error = pid.posCap;
+        out = pid.posCap;
         pid.saturated = true;
     }
-    else if(error < pid.negCap)
+    else if(out < pid.negCap)
     {
-        error = pid.negCap;
+        out = pid.negCap;
         pid.saturated = true;
     }
     else
@@ -42,7 +44,7 @@ float computePid(float val)
         pid.saturated = false;
     }
 
-    pid.lastError = error;
+    pid.lastError = currVal;
 
-    return error;
+    return out;
 }

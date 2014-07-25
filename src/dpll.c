@@ -17,6 +17,8 @@ typedef enum
     NONE_LEAD
 } LEAD_t;
 
+#define PREDIV
+
 struct DpllStruct
 {
     struct PidController *pid;
@@ -24,13 +26,15 @@ struct DpllStruct
     volatile bool isProcessed;
     volatile uint16_t count;
     volatile LEAD_t leading;
+    volatile uint32_t sigCount;
+    volatile uint32_t refCount;
 };
 
-struct DpllStruct dpll = {  NULL, false, true, 0, NONE_LEAD };
+struct DpllStruct dpll = {  NULL, false, true, 0, NONE_LEAD, 0, 0 };
 
 void initDpll()
 {
-    dpll.pid = initPid(PROP_TERM, DERIV_TERM, INTEG_TERM, 1, 0);
+    dpll.pid = initPid(PROP_TERM, DERIV_TERM, INTEG_TERM, 1.0, -1.0);
 }
 void startIcTimer()
 {
@@ -73,15 +77,13 @@ void computeDpll()
         uint16_t freq = PWM_TIM.ARR;
         float normCount = (float)dpll.count * (float)IN_NORM_FACTOR;
 
-        if(dpll.leading == SIG_LEAD)
+        if(dpll.leading == REF_LEAD)
         {
-            // TODO: float cast? rounding?
-            freq -= (uint16_t)(computePid(normCount) * (float)PWM_STEPS);
+            normCount *= (-1.0);
         }
-        else if(dpll.leading == REF_LEAD)
-        {
-            freq += (uint16_t)(computePid(normCount) * (float)PWM_STEPS);
-        }
+
+        // TODO: float cast? rounding?
+        freq += (int16_t)(computePid(normCount) * (float)PWM_STEPS);
 
         setFreq(&PWM_TIM, freq);
         setPulseWidth(&PWM_TIM, freq/2);
@@ -96,6 +98,16 @@ void PWM_TIM_IRQH()
     // TODO: not sure if needed
     SET_MASK(PWM_TIM.SR, AC_TIM_SR_CC1IF_bm, AC_TIM_SR_CC1IF_DIS_gc);
     SET_MASK(PWM_TIM.SR, AC_TIM_SR_UIF_bm, AC_TIM_SR_UIF_DIS_gc);
+
+    #ifdef PREDIV
+    if(dpll.refCount < FREQ_DIVIDE)
+    {
+        ++dpll.refCount;
+        return;
+    }
+
+    dpll.refCount = 0;
+#endif
 
     if(dpll.isCounting)
     {
@@ -118,6 +130,16 @@ void FB_COMP_IRQH()
 {
     // Clear pending interrupt bit
     clearExtiLine(FB_COMP_EXTIN);
+
+    #ifdef PREDIV
+    if(dpll.sigCount < FREQ_DIVIDE)
+    {
+        ++dpll.sigCount;
+        return;
+    }
+
+    dpll.sigCount = 0;
+#endif
 
     if(dpll.isCounting)
     {

@@ -15,6 +15,6 @@ struct PidController
 struct PidController* initPid(  float prop, float deriv, float integ, 
                                 float posCap, float negCap);
 
-float computePid(float val);
+float computePid(float currVal);
 
 #endif // Include guard

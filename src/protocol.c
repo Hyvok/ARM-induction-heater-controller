@@ -1,33 +1,14 @@
-//  ---------------------------------------------------------------------------
-//
-//  Copyright (c) 2008-2013 Supponor Oy
-//
-//  All rights reserved.
-//
-//  This source code may not be published, copied or redistributed in any
-//  form without prior written permission from the owner.
-//
-//  ---------------------------------------------------------------------------
-//
-//  File:   thoma_protocol.c
-//
-//  Author: Kalle Hyvonen, Seppo Raisanen
-//
-//  Desc:   Thoma communication protocol functions
-//
-//  ---------------------------------------------------------------------------
-
-#include "thoma_protocol.h"
-#include "thoma_commands.h"
+#include "_protocol.h"
+#include "_commands.h"
 #include "usart.h"
 #include "quadrature.h"
 
-// Thoma data
-const uint8_t thomaId = 2;	// Found Thoma ID number
+//  data
+const uint8_t Id = 2;	// Found  ID number
 uint8_t continuousRunning = 0;	// Is continuous measurement running
 uint8_t continuousSend = 0;     // Do we need to send a cont data packet
 uint8_t continuousAckSent = 0;  // Have we replied to cont. command
-uint8_t thomaTan = 0;	        // Command transaction number
+uint8_t Tan = 0;	        // Command transaction number
 uint8_t resetCounter = 0;       // Have we reset the counters
 uint8_t channelToReset = 0;     // Which channel we need to reset
 uint8_t pingReply = 0;          // Non-zero if we need to reply to ping
@@ -39,7 +20,7 @@ int32_t zoomValue = 0;          // Zoom value to be sent
 /*-----------------------------------------------------------------*/
 // Function for calculating CRC for the packet
 
-uint8_t thomaCrc(uint8_t *data, uint8_t len)
+uint8_t Crc(uint8_t *data, uint8_t len)
 {
     uint8_t crc = 0;
 
@@ -73,9 +54,9 @@ void setValueToSend(int32_t val, uint8_t ch)
 }
 
 /*-----------------------------------------------------------------*/
-// Validate Thoma buffer
+// Validate  buffer
 //
-int8_t validateThomaBuffer(struct Usart *usart)
+int8_t validateBuffer(struct Usart *usart)
 {
 	// Check start byte
 	if (usart->rx[0] != START_CMD)
@@ -104,7 +85,7 @@ int8_t validateThomaBuffer(struct Usart *usart)
 		return 0;
 	
 	// Check CRC
-	uint8_t crc = thomaCrc(usart->rx, len-1);
+	uint8_t crc = Crc(usart->rx, len-1);
 	if (crc != usart->rx[len-1])
 		return -1;
 	
@@ -114,7 +95,7 @@ int8_t validateThomaBuffer(struct Usart *usart)
 /*-----------------------------------------------------------------*/
 // Send stored data values
 //
-void sendThomaData(struct Usart *usart) 
+void sendData(struct Usart *usart) 
 {
 		// TODO remove this multiplication after a proper profile has been added to dbrlive
 		int32_t panTemp = panValue;
@@ -141,24 +122,24 @@ void sendThomaData(struct Usart *usart)
 }
 
 /*-----------------------------------------------------------------*/
-// Sends Thoma command with CRC
+// Sends  command with CRC
 //
-void sendThomaCommand(struct Usart *usart, uint8_t command, uint8_t dataCount, 
+void sendCommand(struct Usart *usart, uint8_t command, uint8_t dataCount, 
                         uint8_t data[], uint8_t tan)
 {
     // Get new transaction number
-    thomaTan = tan;
+    Tan = tan;
 
     // Calculate data length
     uint8_t sendCount = DATA_OFFS + dataCount;
 
     // Send command
     send(usart, START_CMD);				// Start command
-    usart->crc = 0;					// Thoma CRC does not include start command
+    usart->crc = 0;					//  CRC does not include start command
     send(usart, sendCount-1);			// Data length
-    send(usart, thomaTan);				// Transaction number
+    send(usart, Tan);				// Transaction number
     send(usart, HOST_ADDR);				// To
-    send(usart, thomaId);				// From
+    send(usart, Id);				// From
     send(usart, command);				// Command
     for(uint8_t i = 0; i < dataCount; ++i)
     {
@@ -168,9 +149,9 @@ void sendThomaCommand(struct Usart *usart, uint8_t command, uint8_t dataCount,
 }
 
 /*-----------------------------------------------------------------*/
-// Sends Thoma command with CRC
+// Sends  command with CRC
 //
-void sendThomaCommandHeader(struct Usart *usart, uint8_t command, 
+void sendCommandHeader(struct Usart *usart, uint8_t command, 
                             uint8_t dataCount, uint8_t to, uint8_t tan)
 {
     // Calculate data length
@@ -178,7 +159,7 @@ void sendThomaCommandHeader(struct Usart *usart, uint8_t command,
 
     // Send command
     send(usart, START_CMD);    // Start command
-    usart->crc = 0;      // Thoma CRC does not include start command
+    usart->crc = 0;      //  CRC does not include start command
     send(usart, sendCount-1);   // Data length
     send(usart, tan);                   // Transaction number
     send(usart, to);                  // To
@@ -187,11 +168,11 @@ void sendThomaCommandHeader(struct Usart *usart, uint8_t command,
 
 }
 
-// Parse data received from Thoma interface
-int8_t parseThoma(struct Usart *usart, void *ptr)
+// Parse data received from  interface
+int8_t parse(struct Usart *usart, void *ptr)
 {
     // Validate buffer
-    int8_t used = validateThomaBuffer( usart );
+    int8_t used = validateBuffer( usart );
     if (used <= 0)
         return used;
 
@@ -201,27 +182,27 @@ int8_t parseThoma(struct Usart *usart, void *ptr)
     {
         case REQ_SW_VER:                    // Ping reply
             pingReply = 1;
-            thomaTan = usart->rx[2];        // Save TAN 
+            Tan = usart->rx[2];        // Save TAN 
             break;
 
         case START_CONTINUOUS:		    // Start continuous measurement
             continuousRunning = 1;
-            thomaTan = usart->rx[2];        // Save TAN 
+            Tan = usart->rx[2];        // Save TAN 
             break;
 
         case STOP_CONTINUOUS:		    // Stop continuous measurement	
             continuousRunning = 0;
-            thomaTan = usart->rx[2];        // Save TAN 
+            Tan = usart->rx[2];        // Save TAN 
             break;
 
         case REQ_COUNTERS:		    // Measurement data
             dataRequested = 1;
-            thomaTan = usart->rx[2];        // Save TAN 
+            Tan = usart->rx[2];        // Save TAN 
             break;
 
         case RESET_COUNTER:		    // Counter reset
             resetCounter = 1;
-            thomaTan = usart->rx[2];        // Save TAN 
+            Tan = usart->rx[2];        // Save TAN 
             channelToReset = usart->rx[6];  // Which channel we need to reset
             break;
 
@@ -239,14 +220,14 @@ void sendContinuousData()
 {
     continuousSend = 1;
 }
-// Process Thoma interface
-void processThoma(struct Usart *usart, void *ptr)
+// Process  interface
+void process(struct Usart *usart, void *ptr)
 {
 
     // If we need to reply to a ping
     if(pingReply) 
     {
-        sendThomaCommandHeader(usart, REQ_SW_VER, 7, HOST_ADDR, thomaTan);
+        sendCommandHeader(usart, REQ_SW_VER, 7, HOST_ADDR, Tan);
         // TODO: Agree on version info
         send(usart, 1);
         send(usart, 1);
@@ -262,7 +243,7 @@ void processThoma(struct Usart *usart, void *ptr)
     // If we are in continuous mode and have not sent and ack, send ack
     if(continuousRunning && !continuousAckSent) 
     {
-        sendThomaCommandHeader(usart, START_CONTINUOUS, 1, HOST_ADDR, thomaTan);
+        sendCommandHeader(usart, START_CONTINUOUS, 1, HOST_ADDR, Tan);
         send(usart, 0);
         send(usart, usart->crc);
         continuousAckSent = 1;
@@ -271,16 +252,16 @@ void processThoma(struct Usart *usart, void *ptr)
     // If we have replied with an ack, after that reply with data in cont. mode
     if(continuousRunning && continuousAckSent && continuousSend)
     {
-        sendThomaCommandHeader(usart, CONTINUOUS_DATA, 16, HOST_ADDR, thomaTan);
-        sendThomaData(usart);
+        sendCommandHeader(usart, CONTINUOUS_DATA, 16, HOST_ADDR, Tan);
+        sendData(usart);
         continuousSend = 0;
         return;
     }
     // If data has been requested
     if(dataRequested)
     {
-        sendThomaCommandHeader(usart, REQ_COUNTERS, 16, HOST_ADDR, thomaTan);
-        sendThomaData(usart);
+        sendCommandHeader(usart, REQ_COUNTERS, 16, HOST_ADDR, Tan);
+        sendData(usart);
         dataRequested = 0;
         return;
     }
@@ -301,7 +282,7 @@ void processThoma(struct Usart *usart, void *ptr)
                 rotaryZoom.position = 0;
                 break;
         }
-        sendThomaCommandHeader(usart, RESET_COUNTER, 1, HOST_ADDR, thomaTan);
+        sendCommandHeader(usart, RESET_COUNTER, 1, HOST_ADDR, Tan);
         send(usart, 0);
         send(usart, usart->crc);
         resetCounter = 0;
