@@ -17,8 +17,6 @@ typedef enum
     NONE_LEAD
 } LEAD_t;
 
-#define PREDIV
-
 struct DpllStruct
 {
     struct PidController *pid;
@@ -28,13 +26,16 @@ struct DpllStruct
     volatile LEAD_t leading;
     volatile uint32_t sigCount;
     volatile uint32_t refCount;
+    volatile bool requestUpdate;
+    volatile int16_t frequency;
 };
 
-struct DpllStruct dpll = {  NULL, false, true, 0, NONE_LEAD, 0, 0 };
+struct DpllStruct dpll = {  NULL, false, true, 0, NONE_LEAD, 0, 0, false, 0 };
 
 void initDpll()
 {
     dpll.pid = initPid(PROP_TERM, DERIV_TERM, INTEG_TERM, 1.0, -1.0);
+    dpll.frequency = PWM_TIM.ARR;
 }
 void startIcTimer()
 {
@@ -74,7 +75,6 @@ void computeDpll()
 {
     if(!dpll.isProcessed)
     {
-        uint16_t freq = PWM_TIM.ARR;
         float normCount = (float)dpll.count * (float)IN_NORM_FACTOR;
 
         if(dpll.leading == REF_LEAD)
@@ -83,11 +83,10 @@ void computeDpll()
         }
 
         // TODO: float cast? rounding?
-        freq += (int16_t)(computePid(normCount) * (float)PWM_STEPS);
+        dpll.frequency = (int16_t)(computePid(normCount) * (float)PWM_STEPS);
 
-        setFreq(&PWM_TIM, freq);
-        setPulseWidth(&PWM_TIM, freq/2);
         dpll.isProcessed = true;
+        dpll.requestUpdate = true;
     }
 }
 // Interrupt functions
@@ -97,7 +96,6 @@ void PWM_TIM_IRQH()
     // Clear interrupt flag from status register
     // TODO: not sure if needed
     SET_MASK(PWM_TIM.SR, AC_TIM_SR_CC1IF_bm, AC_TIM_SR_CC1IF_DIS_gc);
-    SET_MASK(PWM_TIM.SR, AC_TIM_SR_UIF_bm, AC_TIM_SR_UIF_DIS_gc);
 
     #ifdef PREDIV
     if(dpll.refCount < FREQ_DIVIDE)
@@ -124,6 +122,25 @@ void PWM_TIM_IRQH()
         dpll.isCounting = true;
         dpll.leading = SIG_LEAD;
     }
+}
+void PWM_TIM_UP_IRQH()
+{
+    // Clear flag
+    SET_MASK(PWM_TIM.SR, AC_TIM_SR_UIF_bm, AC_TIM_SR_UIF_DIS_gc);
+
+    if(!dpll.requestUpdate)
+        return;
+
+    uint16_t newPeriod = PWM_TIM.ARR + dpll.frequency;
+
+    // Set new values
+    setFreq(&PWM_TIM, newPeriod);
+    setPulseWidth(&PWM_TIM, newPeriod/2);
+
+    dpll.frequency = newPeriod;
+
+    // Clear update request
+    dpll.requestUpdate = false;
 }
 // Feedback comparator interrupt
 void FB_COMP_IRQH()

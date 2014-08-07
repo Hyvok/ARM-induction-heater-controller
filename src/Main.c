@@ -168,7 +168,8 @@ void init() {
 #endif // USE_FLOW_METER
 
     // Enable interrupts
-    initInterrupt(PWM_TIM_IRQN, 0, 1, ENABLE);
+    initInterrupt(PWM_TIM_IRQN, 1, 2, ENABLE);
+    initInterrupt(PWM_TIM_UP_IRQN, 1, 3, ENABLE);
     //NVIC_EnableIRQ(PWM_TIM_IRQN);
     //NVIC_EnableIRQ(FB_COMP_IRQN);
 
@@ -226,7 +227,7 @@ void initPwmTimer()
     // Configure interrupts
     uint32_t tempDier = PWM_TIM.DIER;
     SET_MASK(tempDier, AC_TIM_DIER_CC1IE_bm, AC_TIM_DIER_CC1IE_EN_gc);
-    //SET_MASK(tempDier, AC_TIM_DIER_UIE_bm, AC_TIM_DIER_UIE_EN_gc);
+    SET_MASK(tempDier, AC_TIM_DIER_UIE_bm, AC_TIM_DIER_UIE_EN_gc);
     PWM_TIM.DIER = tempDier;
 
     // Enable capture/compares and their complementary channels

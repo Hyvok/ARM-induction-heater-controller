@@ -24,7 +24,9 @@
 #define PWM_TIM         TIM1
 #define PWM_CH_CCR      TIM1.CCR1
 #define PWM_TIM_IRQH    TIM1_CC_IRQHandler
+#define PWM_TIM_UP_IRQH TIM1_UP_TIM16_IRQHandler
 #define PWM_TIM_IRQN    TIM1_CC_IRQn
+#define PWM_TIM_UP_IRQN TIM1_UP_TIM16_IRQn
 #define PWM_CH1_PORT    GPIOA
 #define PWM_CH1         GPIO_PIN_8
 #define PWM_CH1N_PORT   GPIOB
@@ -36,10 +38,11 @@
 // Defines related to digital PLL algorithm
 // Maximum allowed period between rising edges of feedback and output signal
 #define MAX_PERIOD      0xFFFF
-#define INTEG_TERM      0.6
-#define DERIV_TERM      15.1
-#define PROP_TERM       1.9
-#define FREQ_DIVIDE     10
+#define INTEG_TERM      8.8
+#define DERIV_TERM      68.0
+#define PROP_TERM       2.2
+//#define PREDIV
+#define FREQ_DIVIDE     9
 // PD-controller input (=time difference) normalization factor from clock ticks to ns
 #define IN_NORM_FACTOR  (1000/136)
 #define PWM_STEPS       65535 

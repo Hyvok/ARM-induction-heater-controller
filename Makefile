@@ -27,7 +27,7 @@ CC=arm-none-eabi-gcc
 OBJCOPY=arm-none-eabi-objcopy
 SIZE=arm-none-eabi-size
 
-CFLAGS  = -std=gnu99 -Wall -O0 -Tstm32_flash.ld -D$(MCU) \
+CFLAGS  = -std=gnu99 -Wall -O1 -Tstm32_flash.ld -D$(MCU) \
 		  -Wl,-Map=$(OUTPATH)/main.map -ggdb -g3
 CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -nostartfiles -mcpu=cortex-m4
 

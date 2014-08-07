@@ -23,6 +23,10 @@ void initExtiLine(EXTIn_t exti, EDGE_t edge)
         rtsrReg = &EXTI->RTSR2;
         ftsrReg = &EXTI->FTSR2;
     }
+    else
+    {
+        return;
+    }
     switch(edge)
     {
         case RISING_EDGE:
