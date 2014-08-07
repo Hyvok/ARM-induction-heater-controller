@@ -38,11 +38,11 @@
 // Defines related to digital PLL algorithm
 // Maximum allowed period between rising edges of feedback and output signal
 #define MAX_PERIOD      0xFFFF
-#define INTEG_TERM      0.1
-#define DERIV_TERM      62.0
-#define PROP_TERM       0.1
+#define INTEG_TERM      0.0
+#define DERIV_TERM      0.4
+#define PROP_TERM       0.0
 #define PREDIV
-#define FREQ_DIVIDE     9
+#define FREQ_DIVIDE     10
 // PD-controller input (=time difference) normalization factor from clock ticks to ns
 #define IN_NORM_FACTOR  (1000/136)
 #define PWM_STEPS       65535 
