@@ -28,9 +28,10 @@ struct DpllStruct
     volatile uint32_t refCount;
     volatile bool requestUpdate;
     volatile int16_t frequency;
+    float lastCount;
 };
 
-struct DpllStruct dpll = {  NULL, false, true, 0, NONE_LEAD, 0, 0, false, 0 };
+struct DpllStruct dpll = {  NULL, false, true, 0, NONE_LEAD, 0, 0, false, 0, 0 };
 
 void initDpll()
 {
@@ -76,6 +77,11 @@ void computeDpll()
     if(!dpll.isProcessed)
     {
         float normCount = (float)dpll.count * (float)IN_NORM_FACTOR;
+
+#ifdef LOWPASS
+        normCount += dpll.lastCount;
+        dpll.lastCount = normCount;
+#endif
 
         if(dpll.leading == REF_LEAD)
         {
