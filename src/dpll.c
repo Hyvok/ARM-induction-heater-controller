@@ -5,7 +5,8 @@
 #include "macros.h"
 #include "dpll.h"
 #include "exti.h"
-#include "pid_controller.h"
+//#include "pid_controller.h"
+#include "iir_filter.h"
 #include "pwm.h"
 #include "hw.h"
 
@@ -19,7 +20,8 @@ typedef enum
 
 struct DpllStruct
 {
-    struct PidController *pid;
+    //struct PidController *pid;
+    struct IirFilter* iir;
     volatile bool isCounting;
     volatile bool isProcessed;
     volatile uint16_t count;
@@ -31,11 +33,12 @@ struct DpllStruct
     float lastCount;
 };
 
-struct DpllStruct dpll = {  NULL, false, true, 0, NONE_LEAD, 0, 0, false, 0, 0 };
+struct DpllStruct dpll = { NULL, false, true, 0, NONE_LEAD, 0, 0, false, 0, 0 };
 
 void initDpll()
 {
-    dpll.pid = initPid(PROP_TERM, DERIV_TERM, INTEG_TERM, 1.0, -1.0);
+    //dpll.pid = initPid(PROP_TERM, DERIV_TERM, INTEG_TERM, 1.0, -1.0);
+    dpll.iir = initIirFilter(B0F_TERM, B1F_TERM, A1F_TERM);
     dpll.frequency = PWM_TIM.ARR;
 }
 void startIcTimer()
@@ -89,7 +92,9 @@ void computeDpll()
         }
 
         // TODO: float cast? rounding?
-        dpll.frequency = (int16_t)(computePid(normCount) * (float)PWM_STEPS);
+        //dpll.frequency = (int16_t)(computePid(normCount) * (float)PWM_STEPS);
+        //dpll.frequency = (int16_t)(computeIirFilter(normCount) / (float)IN_NORM_FACTOR);
+        dpll.frequency = (int)(computeIirFilter(normCount) / (float)IN_NORM_FACTOR);
 
         dpll.isProcessed = true;
         dpll.requestUpdate = true;
@@ -137,7 +142,8 @@ void PWM_TIM_UP_IRQH()
     if(!dpll.requestUpdate)
         return;
 
-    uint16_t newPeriod = PWM_TIM.ARR + dpll.frequency;
+    //uint16_t newPeriod = PWM_TIM.ARR + dpll.frequency;
+    uint16_t newPeriod = dpll.frequency;
 
     // Set new values
     setFreq(&PWM_TIM, newPeriod);
