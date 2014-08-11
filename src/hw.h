@@ -37,7 +37,8 @@
 
 // Defines related to digital PLL algorithm
 // Maximum allowed period between rising edges of feedback and output signal
-#define MAX_PERIOD      0xFFFF
+#define MAX_PERIOD      0x09C4
+#define MIN_PERIOD      0x01F4
 #define INTEG_TERM      0.0
 #define DERIV_TERM      108.8
 #define PROP_TERM       0.0

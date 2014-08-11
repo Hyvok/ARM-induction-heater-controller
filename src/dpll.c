@@ -96,6 +96,11 @@ void computeDpll()
         //dpll.frequency = (int16_t)(computeIirFilter(normCount) / (float)IN_NORM_FACTOR);
         dpll.frequency = (int)(computeIirFilter(normCount) / (float)IN_NORM_FACTOR);
 
+        if(dpll.frequency > MAX_PERIOD)
+            dpll.frequency = MAX_PERIOD;
+        else if(dpll.frequency < MIN_PERIOD)
+            dpll.frequency = MIN_PERIOD;
+
         dpll.isProcessed = true;
         dpll.requestUpdate = true;
     }
