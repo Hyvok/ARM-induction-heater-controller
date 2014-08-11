@@ -79,7 +79,7 @@ void computeDpll()
 {
     if(!dpll.isProcessed)
     {
-        float normCount = (float)dpll.count * (float)IN_NORM_FACTOR;
+        float normCount = (float)dpll.count;
 
 #ifdef LOWPASS
         normCount += dpll.lastCount;
@@ -94,7 +94,7 @@ void computeDpll()
         // TODO: float cast? rounding?
         //dpll.frequency = (int16_t)(computePid(normCount) * (float)PWM_STEPS);
         //dpll.frequency = (int16_t)(computeIirFilter(normCount) / (float)IN_NORM_FACTOR);
-        dpll.frequency = (int)(computeIirFilter(normCount) / (float)IN_NORM_FACTOR);
+        dpll.frequency = (int)(computeIirFilter(normCount) + PWM_STEPS);
 
         if(dpll.frequency > MAX_PERIOD)
             dpll.frequency = MAX_PERIOD;

@@ -17,12 +17,6 @@ float computeIirFilter(float value)
 
     res = iir.b0f * value + iir.b1f * iir.lastInput - iir.a1f * iir.lastOutput;
 
-    // Cap values
-    if(res > IN_NORM_FACTOR * PWM_STEPS)
-        res = IN_NORM_FACTOR * PWM_STEPS;
-    if(res < -1 * (IN_NORM_FACTOR * PWM_STEPS))
-        res = -1 * (IN_NORM_FACTOR * PWM_STEPS);
-
     iir.lastOutput = res;
     iir.lastInput = value;
 
