@@ -42,9 +42,9 @@
 #define INTEG_TERM      0.0
 #define DERIV_TERM      108.8
 #define PROP_TERM       0.0
-#define B0F_TERM        (0.2593)
-#define B1F_TERM        (-0.2346)
-#define A1F_TERM        (-0.9753)
+#define B0F_TERM        (0.259259)
+#define B1F_TERM        (-0.234568)
+#define A1F_TERM        (-0.975309)
 //#define PREDIV
 #define FREQ_DIVIDE     10
 //#define LOWPASS
