@@ -20,6 +20,10 @@
 #define DRVR_OE_PORT    GPIOB
 #define DRVR_OE         GPIO_PIN_10
 
+// Gate driver enable/disable signal
+#define GD_OE_PORT      GPIOA
+#define GD_OE           GPIO_PIN_7
+
 // Timers
 #define PWM_TIM         TIM1
 #define PWM_CH_CCR      TIM1.CCR1

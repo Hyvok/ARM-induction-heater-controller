@@ -150,6 +150,9 @@ void init() {
     setPinMode(&DRVR_OE_PORT, DRVR_OE, GPIO_MODER_OUT_gc);
     setPin(&DRVR_OE_PORT, DRVR_OE);
 
+    setPinMode(&GD_OE_PORT, GD_OE, GPIO_MODER_OUT_gc);
+    setPin(&GD_OE_PORT, GD_OE);
+
     setAltFunct(&PWM_CH1_PORT, PWM_CH1, GPIO_AFR_AF6_gc);
     setAltFunct(&PWM_CH1N_PORT, PWM_CH1N, GPIO_AFR_AF6_gc);
 
@@ -180,9 +183,11 @@ void init() {
     initUsart(&controlUsart, USART_115200_BPS, 0);
 #endif // USE_USART
 
-    // Enable line driver
-    // Initialize timers
+    // Enable line driver and gate drivers
     resetPin(&DRVR_OE_PORT, DRVR_OE);
+    resetPin(&GD_OE_PORT, GD_OE);
+
+    // Initialize timers
     initPwmTimer();
     initComp();
     initIcTimer();
