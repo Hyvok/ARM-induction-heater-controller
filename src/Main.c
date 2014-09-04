@@ -245,8 +245,12 @@ void initPwmTimer()
     SET_MASK(PWM_TIM.EGR, AC_TIM_EGR_UG_bm, AC_TIM_EGR_UG_REINIT_gc);
     // Enable counter
     SET_MASK(PWM_TIM.CR1, AC_TIM_CR1_CEN_bm, AC_TIM_CR1_CEN_EN_gc);
-    // Set automatic output enable
-    SET_MASK(PWM_TIM.BDTR, AC_TIM_BDTR_AOE_bm, AC_TIM_BDTR_AOE_EN_gc);
+
+    // Set automatic output enable and deadtime setting
+    uint32_t tempBdtr = PWM_TIM.BDTR; 
+    SET_MASK(tempBdtr, AC_TIM_BDTR_AOE_bm, AC_TIM_BDTR_AOE_EN_gc);
+    SET_MASK(tempBdtr, AC_TIM_BDTR_DTG_bm, DEADTIME);
+    PWM_TIM.BDTR = tempBdtr;
 }
 void initIcTimer()
 {

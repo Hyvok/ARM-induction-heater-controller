@@ -36,6 +36,9 @@
 #define PWM_CH1N_PORT   GPIOB
 #define PWM_CH1N        GPIO_PIN_13
 
+// Deadtime setting, check datasheet for explanation of how to calculate it
+#define DEADTIME        0xAF
+
 // Timer to use for DPLL
 #define IC_TIM          TIM8
 
