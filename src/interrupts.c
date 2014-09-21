@@ -3,14 +3,13 @@
 #include "enable_disable_enum.h"
 #include "interrupts.h"
 
+// TODO: get rid of ugly magic number code
 void initInterrupt(IRQn_t irq, uint8_t preEmptPrio, uint8_t subPrio, EN_t state)
 {
-    // TODO: get rid of ugly magic number code
     uint32_t tmppriority = 0x00, tmppre = 0x00, tmpsub = 0x0F;
 
     if(state == ENABLE)
     {
-        /* Compute the Corresponding IRQ Priority --------------------------------*/    
         tmppriority = (0x700 - ((SCB->AIRCR) & (uint32_t)0x700))>> 0x08;
         tmppre = (0x4 - tmppriority);
         tmpsub = tmpsub >> tmppriority;
@@ -21,12 +20,12 @@ void initInterrupt(IRQn_t irq, uint8_t preEmptPrio, uint8_t subPrio, EN_t state)
 
         NVIC->IP[irq] = tmppriority;
 
-        /* Enable the Selected IRQ Channels --------------------------------------*/
+        // Enable the Selected IRQ Channels
         NVIC->ISER[irq >> 0x05] = (uint32_t)0x01 << (irq & (uint8_t)0x1F);
     }
     else
     {
-        /* Disable the Selected IRQ Channels -------------------------------------*/
+        // Disable the Selected IRQ Channels
         NVIC->ICER[irq >> 0x05] = (uint32_t)0x01 << (irq & (uint8_t)0x1F);
     }
 }
