@@ -5,12 +5,17 @@
 #include "macros.h"
 #include "dpll.h"
 #include "exti.h"
-//#include "pid_controller.h"
 #include "iir_filter.h"
 #include "pwm.h"
 #include "hw.h"
 
+/*--------------------------------------------------------------------*/
+// Digital phase-locked loop 
+/*--------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------*/
 // Global variables related to digital PLL
+//
 typedef enum
 {
     REF_LEAD,
@@ -20,7 +25,6 @@ typedef enum
 
 struct DpllStruct
 {
-    //struct PidController *pid;
     struct IirFilter* iir;
     volatile bool isCounting;
     volatile bool isProcessed;
@@ -37,7 +41,6 @@ struct DpllStruct dpll = { NULL, false, true, 0, NONE_LEAD, 0, 0, false, 0, 0 };
 
 void initDpll()
 {
-    //dpll.pid = initPid(PROP_TERM, DERIV_TERM, INTEG_TERM, 1.0, -1.0);
     dpll.iir = initIirFilter(B0F_TERM, B1F_TERM, A1F_TERM);
     dpll.frequency = PWM_TIM.ARR;
 }
@@ -91,9 +94,7 @@ void computeDpll()
             normCount *= (-1.0);
         }
 
-        // TODO: float cast? rounding?
-        //dpll.frequency = (int16_t)(computePid(normCount) * (float)PWM_STEPS);
-        //dpll.frequency = (int16_t)(computeIirFilter(normCount) / (float)IN_NORM_FACTOR);
+        // TODO: rounding?
         dpll.frequency = (int)(computeIirFilter(normCount) + PWM_STEPS);
 
         if(dpll.frequency > MAX_PERIOD)
@@ -105,8 +106,13 @@ void computeDpll()
         dpll.requestUpdate = true;
     }
 }
-// Interrupt functions
-// Interrupt that fires when we get a capture/compare match from TIM1
+/*--------------------------------------------------------------------*/
+// Interrupts 
+/*--------------------------------------------------------------------*/
+
+/*--------------------------------------------------------------------*/
+// Interrupt that fires when we get a capture/compare match from PWM_TIM 
+//
 void PWM_TIM_IRQH()
 {
     // Clear interrupt flag from status register
@@ -139,6 +145,9 @@ void PWM_TIM_IRQH()
         dpll.leading = SIG_LEAD;
     }
 }
+/*--------------------------------------------------------------------*/
+// Interrupt that fires when we get an update event from PWM_TIM
+//
 void PWM_TIM_UP_IRQH()
 {
     // Clear flag
@@ -159,7 +168,9 @@ void PWM_TIM_UP_IRQH()
     // Clear update request
     dpll.requestUpdate = false;
 }
+/*--------------------------------------------------------------------*/
 // Feedback comparator interrupt
+//
 void FB_COMP_IRQH()
 {
     // Clear pending interrupt bit

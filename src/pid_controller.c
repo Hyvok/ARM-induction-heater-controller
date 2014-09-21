@@ -1,6 +1,9 @@
 #include <stdbool.h>
 #include "pid_controller.h"
 
+/*--------------------------------------------------------------------*/
+// Global data 
+//
 struct PidController pid = {0, 0, 0, 0, 0, 0, false};
 
 struct PidController* initPid(  float prop, float deriv, float integ, 

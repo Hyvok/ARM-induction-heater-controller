@@ -1,6 +1,7 @@
 # Project sources
 #SRCS = Main.c stm32f30x_it.c system_stm32f30x.c
-SRCS = Main.c gpio.c clocks.c iir_filter.c dpll.c pwm.c exti.c interrupts.c handlers.c 
+SRCS = 	Main.c gpio.c clocks.c iir_filter.c dpll.c pwm.c exti.c interrupts.c \
+	   	handlers.c 
 
 # all the files will be generated with this name (main.elf, main.bin, main.hex, etc)
 
@@ -11,7 +12,7 @@ OUTPATH=build
 ###################################################
 
 # Check for valid float argument
-# NOTE that you have to run make clan after
+# NOTE that you have to run make clean after
 # changing these as hardfloat and softfloat are not
 # binary compatible
 ifneq ($(FLOAT_TYPE), hard)
@@ -29,7 +30,8 @@ SIZE=arm-none-eabi-size
 
 CFLAGS  = -std=gnu99 -Wall -O1 -Tstm32_flash.ld -D$(MCU) \
 		  -Wl,-Map=$(OUTPATH)/main.map -ggdb -g3
-CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -nostartfiles -mcpu=cortex-m4
+CFLAGS += -mlittle-endian -mthumb -mthumb-interwork -nostartfiles \
+		  -mcpu=cortex-m4
 
 ifeq ($(FLOAT_TYPE), hard)
 CFLAGS += -fsingle-precision-constant -Wdouble-promotion

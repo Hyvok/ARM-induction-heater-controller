@@ -1,6 +1,9 @@
 #include "hw.h"
 #include "iir_filter.h"
 
+/*--------------------------------------------------------------------*/
+// Global data 
+//
 struct IirFilter iir = {0, 0, 0, 0, 0};
 
 struct IirFilter* initIirFilter(float b0f, float b1f, float a1f)

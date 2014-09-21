@@ -18,12 +18,10 @@
 #include "flow_meter.h"
 #endif // USE_FLOW_METER
 
-// Initial guess for the TIMx_ARR and CCRn registers, sets frequency, pulse-width
-#define INIT_PWM_FREQ   0x550
-#define INIT_PW         (INIT_PWM_FREQ / 2)
-#define PWM_PRESCALER   0x00
+/*--------------------------------------------------------------------*/
+// Private function prototypes 
+/*--------------------------------------------------------------------*/
 
-// Private function prototypes
 void systemInit();
 static void setSysClock();
 void init();
@@ -37,6 +35,9 @@ void processDevice( struct Usart *usart,
                     void* ptr);
 #endif // USE_USART
 
+/*--------------------------------------------------------------------*/
+// Main
+//
 int main(void) 
 {
     systemInit();
@@ -61,6 +62,9 @@ int main(void)
 
 	return 0;
 }
+/*--------------------------------------------------------------------*/
+// Configures clock and hardware for operation 
+//
 void systemInit()
 {
     //#if (__FPU_PRESENT == 1) && (__FPU_USED == 1)
@@ -79,6 +83,9 @@ void systemInit()
     SCB->VTOR = FLASH_BASE | VECT_TAB_OFFSET; 
     #endif  
 }
+/*--------------------------------------------------------------------*/
+// Configures system clocks 
+//
 static void setSysClock()
 {
     uint32_t startUpCounter = 0, hsiStatus = 0;
@@ -133,6 +140,9 @@ static void setSysClock()
          configuration. User can add here some code to deal with this error */
     }
 }
+/*--------------------------------------------------------------------*/
+// Initializes hardware and system
+//
 void init() {
     // GPIO clocks
     enableAhbPeriphClk(RCC_AHBENR_IOPAEN_gc, ENABLE);
@@ -165,7 +175,6 @@ void init() {
 
 #ifdef USE_FLOW_METER
     // Timer/counter input pin for flow-meter
-    // TODO: check pins for flow-meter!
     setPinMode(&FLOW_PIN_PORT, FLOW_PIN, GPIO_MODER_AF_gc);
     setAltFunct(&FLOW_PIN_PORT, FLOW_PIN, GPIO_AFR_AF0_gc);
 #endif // USE_FLOW_METER
@@ -173,8 +182,6 @@ void init() {
     // Enable interrupts
     initInterrupt(PWM_TIM_IRQN, 1, 2, ENABLE);
     initInterrupt(PWM_TIM_UP_IRQN, 1, 3, ENABLE);
-    //NVIC_EnableIRQ(PWM_TIM_IRQN);
-    //NVIC_EnableIRQ(FB_COMP_IRQN);
 
 #ifdef USE_USART
     // USARTs
@@ -196,12 +203,14 @@ void init() {
     // Software modules
     initDpll();
 
-    // TODO: global interrupt enable?
     enableInterrupts();
 }
+/*--------------------------------------------------------------------*/
+// Initialize PWM timer
+//
 void initPwmTimer()
 {
-    // TODO: timer outputs not resetting consistently, FIX!
+    // TODO: timer outputs not resetting consistently, fix with pulldowns!
     // Before enabling TIM1 clock, set it to use doubled PLL as the clock
     SET_MASK(RCC->CFGR3, RCC_CFGR3_TIM1SW_bm, RCC_CFGR3_TIM1SW_PLL_gc);
     enableApb2PeriphClk(RCC_APB2ENR_TIM1EN_gc, ENABLE);
@@ -216,9 +225,9 @@ void initPwmTimer()
 
     // Put initial frequency and prescaler value to the auto-reload register
     PWM_TIM.ARR = INIT_PWM_FREQ;
-    PWM_TIM.PSC = PWM_PRESCALER;
+    PWM_TIM.PSC = 0;
     // Put initial pulse-width values to the capture/compare registers
-    PWM_TIM.CCR1 = INIT_PW;
+    PWM_TIM.CCR1 = INIT_PWM_FREQ / 2;
 
     // Enable OC1 pre-load
     // TODO: changed location: SET_MASK(PWM_TIM.CCMR1, AC_TIM_CCMR1_OC1PE_bm, AC_TIM_CCMR1_OC1PE_EN_gc);
@@ -246,12 +255,15 @@ void initPwmTimer()
     // Enable counter
     SET_MASK(PWM_TIM.CR1, AC_TIM_CR1_CEN_bm, AC_TIM_CR1_CEN_EN_gc);
 
-    // Set automatic output enable and deadtime setting
+    // Set automatic output enable
     uint32_t tempBdtr = PWM_TIM.BDTR; 
     SET_MASK(tempBdtr, AC_TIM_BDTR_AOE_bm, AC_TIM_BDTR_AOE_EN_gc);
     SET_MASK(tempBdtr, AC_TIM_BDTR_DTG_bm, DEADTIME);
     PWM_TIM.BDTR = tempBdtr;
 }
+/*--------------------------------------------------------------------*/
+// Initialize timer for input capture
+//
 void initIcTimer()
 {
     // Enable clock, enable 2x PLL clock
@@ -260,6 +272,9 @@ void initIcTimer()
     // Set maximum period
     IC_TIM.ARR = MAX_PERIOD;
 }
+/*--------------------------------------------------------------------*/
+// Initialize comparator
+//
 void initComp()
 {
     //SET_MASK(FB_COMP.CSR, COMP1_CSR_POL_bm, COMP1_CSR_POL_INV_gc);
@@ -274,7 +289,7 @@ void initComp()
     initInterrupt(FB_COMP_IRQN, 0, 1, ENABLE);
 }
 #ifdef USE_USART
-/*-----------------------------------------------------------------*/
+/*--------------------------------------------------------------------*/
 // Process device data
 //
 void processDevice(struct Usart *usart,
@@ -325,5 +340,6 @@ void processDevice(struct Usart *usart,
 
 }
 #endif // USE_USART
+
 // Dummy function to avoid compiler error
 void _init() {}
