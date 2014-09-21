@@ -11,12 +11,6 @@
 #include "pwm.h"
 #include "interrupts.h"
 #include "exti.h"
-#ifdef USE_USART
-#include "usart.h"
-#endif // USE_USART
-#ifdef USE_FLOW_METER
-#include "flow_meter.h"
-#endif // USE_FLOW_METER
 
 /*--------------------------------------------------------------------*/
 // Private function prototypes 
@@ -28,12 +22,6 @@ void init();
 void initPwmTimer();
 void initIcTimer();
 void initComp();
-#ifdef USE_USART
-void processDevice( struct Usart *usart, 
-                    int8_t (*parser)(struct Usart *usart, void *ptr),
-                    void (*process)(struct Usart *usart, void *ptr),
-                    void* ptr);
-#endif // USE_USART
 
 /*--------------------------------------------------------------------*/
 // Main
@@ -47,17 +35,6 @@ int main(void)
     {
         // Run DPLL algorithm if we have a new count, adjusts PWM-frequency
         computeDpll();
-#ifdef USE_USART
-        // Process all device data
-        processDevice(&sensorsUsart, parseProtocol, processProtocol, 0);
-
-        if(sendData)
-        {
-            // Clear flag
-            sendData = false;
-            // TODO: set values to send in protocol library
-        }
-#endif // USE_USART
     }
 
 	return 0;
@@ -173,22 +150,9 @@ void init() {
     // Comparator
     setPinMode(&FB_PIN_PORT, FB_PIN, GPIO_MODER_ANA_gc);
 
-#ifdef USE_FLOW_METER
-    // Timer/counter input pin for flow-meter
-    setPinMode(&FLOW_PIN_PORT, FLOW_PIN, GPIO_MODER_AF_gc);
-    setAltFunct(&FLOW_PIN_PORT, FLOW_PIN, GPIO_AFR_AF0_gc);
-#endif // USE_FLOW_METER
-
     // Enable interrupts
     initInterrupt(PWM_TIM_IRQN, 1, 2, ENABLE);
     initInterrupt(PWM_TIM_UP_IRQN, 1, 3, ENABLE);
-
-#ifdef USE_USART
-    // USARTs
-    SETUP_USART( CONTROL_USART );
-    // Configure all usarts
-    initUsart(&controlUsart, USART_115200_BPS, 0);
-#endif // USE_USART
 
     // Enable line driver and gate drivers
     resetPin(&DRVR_OE_PORT, DRVR_OE);
@@ -288,58 +252,6 @@ void initComp()
     initExtiLine(FB_COMP_EXTIN, RISING_EDGE);
     initInterrupt(FB_COMP_IRQN, 0, 1, ENABLE);
 }
-#ifdef USE_USART
-/*--------------------------------------------------------------------*/
-// Process device data
-//
-void processDevice(struct Usart *usart,
-    int8_t (*parser)(struct Usart *usart, void *ptr),
-    void (*process)(struct Usart *usart, void *ptr),
-    void *ptr)
-{
-
-    // Loop until all data has been parsed
-    while (usart->received)
-    {
-        // Parse the data in receive queue
-        int8_t used = parser(usart, ptr);
-
-
-        // Update timeout when waiting
-        if (used == 0 && pingTimer != processTimer)
-		{
-            // Remove first byte when waiting too long
-            if (usart->timeout++ > 4)
-                used = -1;
-		}
-
-        // Are we waiting for more data
-        if (used == 0)
-            break;
-
-        // Clear timeout
-        usart->timeout = 0;
-
-        // Is the data invalid
-        if (used < 0)
-        {
-            // Debug error data
-            send(&sensorsUsart, 0xEE);
-            send(&sensorsUsart, usart->rx[0]);
-
-            // Invalid data, remove first and retry
-            removeData(usart, 1);
-            continue;
-        }
-
-        removeData(usart, used);
-    }
-
-    // Process device data
-    process( usart, ptr );
-
-}
-#endif // USE_USART
 
 // Dummy function to avoid compiler error
 void _init() {}
